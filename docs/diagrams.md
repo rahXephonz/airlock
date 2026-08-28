@@ -15,6 +15,15 @@ the line in half around it, so a long caption leaves an arrow that reads as
 broken — or worse, as though the caption itself were a node. Detail belongs in
 the node text, where it costs nothing.
 
+**Nothing that did not happen gets an arrow.** A dotted line into dispatch
+labelled "never sent" still draws an arrowhead arriving there, which is the
+opposite of what it means — the whole point is that dispatch never hears about
+the call. A note on that lane says it without drawing it.
+
+**Notes and replies at the same step collide.** Mermaid places a note and the
+reply that follows it at nearly the same height, and Excalidraw does not nudge
+them apart. Put the note before the reply and keep both short.
+
 **A refused path must not point at its destination.** An arrow into `dispatch`
 labelled "refused" still draws an arrowhead arriving there, which says the
 opposite of what it means. The refusal terminates in its own node instead, so
@@ -64,19 +73,19 @@ sequenceDiagram
 
     A->>K: airlock_bazaar_read_listing
     K->>B: read listing 4412
-    B-->>K: listing + seller "fulfilment steps"
-    Note over K: output marked tainted, origin recorded
+    B-->>K: listing plus seller fulfilment steps
+    Note over K: output tainted, origin recorded
     K-->>A: allowed
 
     A->>K: airlock_vault_read_record
     K->>V: read billing profile
     V-->>K: accountRef ACCT-7731-QX45
-    K-->>A: allowed — nothing crossed a boundary yet
+    K-->>A: allowed, no boundary crossed yet
 
-    A->>K: airlock_dispatch_send_message with the account reference
-    Note over K: argument matches text that came out of bazaar
-    K--xD: never sent
-    K-->>A: refused — names the origin, the boundary, the matched text
+    A->>K: airlock_dispatch_send_message
+    Note over K: argument matches text from bazaar
+    Note over D: never hears about this call
+    K-->>A: refused, with origin and matched text
 ```
 
 ## 3. Why a confirmation dialog is not the same thing
