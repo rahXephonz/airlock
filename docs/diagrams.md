@@ -88,30 +88,10 @@ sequenceDiagram
     K-->>A: refused, with origin and matched text
 ```
 
-## 3. Why a confirmation dialog is not the same thing
+## Not a diagram
 
-The argument the entry has to win, as a diagram.
-
-```mermaid
-flowchart TB
-    subgraph them["Built-in confirmation"]
-        direction TB
-        t1["Model decides it is worth asking"]
-        t2["Model writes the question"]
-        t3["User approves or not"]
-        t4["Reasoning gone when the turn scrolls away"]
-        t1 --> t2 --> t3 --> t4
-    end
-
-    subgraph us["Airlock"]
-        direction TB
-        u1["Policy engine evaluates outside the model"]
-        u2["Provenance is data: origin, trust, matched text"]
-        u3["Refused calls need a person in the console, naming the untrusted origin"]
-        u4["Decision kept in the ledger, reviewable after the fact"]
-        u1 --> u2 --> u3 --> u4
-    end
-
-    note1["The component that can be fooled is the one certifying it wasn't"]
-    t2 -.-> note1
-```
+The comparison against a built-in confirmation dialog was drafted as a third
+flowchart and dropped. Two columns that never interact are two lists drawn
+expensively — a flowchart earns its space by showing a mechanism, and there is
+no mechanism in a comparison. It reads as a table, and the console's hero makes
+the same point harder with two real quotes side by side.
