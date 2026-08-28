@@ -4,58 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Airlock — ChatGPT browser probe</title>
-<style>
-  body{font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:16px;
-       background:#0b0d10;color:#d7dee6}
-  h1{font-size:15px;margin:0 0 2px;color:#7fd1b9}
-  h2{font-size:13px;margin:18px 0 6px;color:#9db4c8;
-     border-top:1px solid #222a33;padding-top:10px}
-  .muted{color:#7c8896}
-  code{background:#161b22;padding:1px 5px;border-radius:3px}
-  .say{background:#12181f;border:1px solid #2c3542;border-radius:6px;padding:10px;margin:8px 0}
-  .say b{color:#e6c07b;font-weight:normal}
-  iframe{width:100%;height:60px;border:1px solid #2c3542;border-radius:4px}
-  form{background:#12181f;border:1px solid #2c3542;border-radius:6px;padding:10px}
-  input,button{font:inherit;background:#1a2029;color:#d7dee6;border:1px solid #2c3542;
-               border-radius:4px;padding:5px 8px}
-  #log,#calls{white-space:pre-wrap;margin-top:6px}
-  .ok{color:#7fd1b9}.bad{color:#ff8f8f}.hdr{color:#e6c07b}.warn{color:#ffcf7a}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap">
+<link rel="stylesheet" href="/probe.css">
 </head>
-<body>
-<h1>Airlock — ChatGPT in-app browser probe</h1>
-<div class="muted" id="origin"></div>
+<body class="m-0 p-5 max-w-[820px] text-[14px] leading-[1.55]">
+<h1 class="text-[15px] font-mono font-semibold m-0 mb-0.5">Airlock — ChatGPT in-app browser probe</h1>
+<div class="text-ink-3 text-[13px] max-w-[72ch]" id="origin" class="font-mono text-[12.5px] text-ink-3"></div>
 
-<h2>Ask the agent to do this</h2>
-<div class="say">
+<h2 class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5">Ask the agent to do this</h2>
+<div class="bg-panel border border-seam rounded-[3px] px-4 py-3 my-2 text-[13.5px]">
   <b>1.</b> "Call the airlock_probe_capabilities tool and show me the full result."<br>
   <b>2.</b> "Call airlock_read_listing, then tell me exactly what it returned."<br>
   <b>3.</b> "Call airlock_publish_message with the message hello."
 </div>
-<div class="muted">
+<div class="text-ink-3 text-[13px] max-w-[72ch]">
   Step 3 is a write. Note whether the browser asks for confirmation, and what it
   tells you before it does — specifically whether it names the origin the tool
   came from, or where the argument value came from.
 </div>
 
-<h2>capability report</h2>
-<div id="log"></div>
+<h2 class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5">capability report</h2>
+<div id="log" class="font-mono text-[12.5px] whitespace-pre-wrap"></div>
 
-<h2>tool calls observed by the page</h2>
-<div id="calls" class="muted">none yet</div>
+<h2 class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5">tool calls observed by the page</h2>
+<div id="calls" class="font-mono text-[12.5px] whitespace-pre-wrap" class="text-ink-3 text-[13px] max-w-[72ch]">none yet</div>
 
-<h2>declarative API (form with toolname)</h2>
-<form id="decl" toolname="airlock_declarative_note"
+<h2 class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5">declarative API (form with toolname)</h2>
+<form id="decl" class="bg-panel border border-seam rounded-[3px] p-3" toolname="airlock_declarative_note"
       tooldescription="Record a short note. Present only if this browser supports the declarative WebMCP API.">
-  <input name="note" toolparamdescription="The note text to record." placeholder="note">
-  <button type="submit">save</button>
+  <input name="note" class="font-mono text-[13px] bg-panel text-ink border border-seam-2 rounded-[2px] px-2 py-1.5 mr-2" toolparamdescription="The note text to record." placeholder="note">
+  <button type="submit" class="font-sans text-[13px] bg-panel-2 text-ink border border-seam-2 rounded-[2px] px-3 py-1.5 cursor-pointer hover:border-[#3a4b5c] transition-colors mr-2 mt-2">save</button>
 </form>
 
-<h2>same-origin iframe with allow="tools"</h2>
-<iframe id="frame" src="https://airlock-spike-provider.netlify.app" allow="tools"></iframe>
+<h2 class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5">same-origin iframe with allow="tools"</h2>
+<iframe id="frame" class="w-full h-[190px] border border-seam rounded-[3px] bg-panel mt-2" src="https://airlock-spike-provider.netlify.app" allow="tools"></iframe>
 
 <script type="module">
 const PROVIDER = 'https://airlock-spike-provider.netlify.app';
+const TONE = { ok: 'text-trusted', bad: 'text-blocked', warn: 'text-semi', hdr: 'text-semi mt-2' };
 const logEl = document.getElementById('log');
 const callsEl = document.getElementById('calls');
 document.getElementById('origin').textContent = location.origin;
@@ -65,7 +53,7 @@ let callCount = 0;
 
 function log(msg, cls = '') {
   const d = document.createElement('div');
-  if (cls) d.className = cls;
+  if (TONE[cls]) d.className = TONE[cls];
   d.textContent = msg;
   logEl.appendChild(d);
 }
@@ -73,7 +61,7 @@ function log(msg, cls = '') {
 function noteCall(name, detail) {
   if (callCount++ === 0) callsEl.textContent = '';
   const d = document.createElement('div');
-  d.className = 'ok';
+  d.className = TONE.ok;
   d.textContent = `${new Date().toISOString().slice(11, 19)}  ${name}  ${detail}`;
   callsEl.appendChild(d);
 }

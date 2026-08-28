@@ -15,6 +15,10 @@
 @source "./vault/index.html";
 @source "./dispatch/index.html";
 @source "./bazaar/index.html";
+@source "../spike/provider/index.html";
+@source "../spike/consumer/index.html";
+@source "../spike/consumer/chatgpt.html";
+@source "../spike/consumer/chatgpt2.html";
 
 @theme {
   --color-ground: #0a0f14;

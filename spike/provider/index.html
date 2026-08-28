@@ -4,28 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Airlock spike — provider</title>
-<style>
-  body{font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:16px;
-       background:#0b0d10;color:#d7dee6}
-  h1{font-size:14px;margin:0 0 4px;color:#7fd1b9}
-  .muted{color:#7c8896}
-  #log{white-space:pre-wrap;margin-top:12px;border-top:1px solid #222a33;padding-top:8px}
-  .ok{color:#7fd1b9}.bad{color:#ff8f8f}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap">
+<link rel="stylesheet" href="/probe.css">
 </head>
-<body>
-<h1>provider origin</h1>
-<div class="muted" id="origin"></div>
-<div id="log"></div>
+<body class="m-0 p-5 max-w-[820px] text-[14px] leading-[1.55]">
+<h1 class="text-[15px] font-mono font-semibold m-0 mb-0.5">provider origin</h1>
+<div class="text-ink-3 text-[13px] max-w-[72ch]" id="origin" class="font-mono text-[12.5px] text-ink-3"></div>
+<div id="log" class="font-mono text-[12.5px] whitespace-pre-wrap"></div>
 
 <script type="module">
 const CONSUMER = 'https://airlock-spike-consumer.netlify.app';
+const TONE = { ok: 'text-trusted', bad: 'text-blocked', warn: 'text-semi', hdr: 'text-semi mt-2' };
 const logEl = document.getElementById('log');
 document.getElementById('origin').textContent = location.origin;
 
 function log(msg, cls = '') {
   const line = document.createElement('div');
-  if (cls) line.className = cls;
+  if (TONE[cls]) line.className = TONE[cls];
   line.textContent = msg;
   logEl.appendChild(line);
 }

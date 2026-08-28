@@ -12,5 +12,9 @@ out=$(mktemp -t airlock-fixture-css)
 for app in vault dispatch bazaar; do
   cp "$out" "apps/$app/fixture.css"
 done
+
+# The day-one probes share the same sheet so they match the rest of the project.
+cp "$out" spike/provider/probe.css
+cp "$out" spike/consumer/probe.css
 rm -f "$out"
-echo "fixture.css written for vault, dispatch, bazaar"
+echo "stylesheet written for vault, dispatch, bazaar and the spike probes"
