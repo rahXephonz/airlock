@@ -31,41 +31,61 @@ export default function App() {
    * where it is unsupported, so the choice is made on the result rather than on
    * an error that never arrives.
    */
-  const boot = useCallback(async () => {
-    const cross = new CrossOriginResolver();
-    const found = modelContext() ? await cross.discover().catch(() => []) : [];
-
-    if (found.length > 0) {
-      setResolver(cross);
-      setTools(found);
-      setNote(`Discovered ${found.length} tools across ${new Set(found.map((t) => t.profile?.name)).size} partner origins.`);
-      return cross;
+  const chooseResolver = useCallback(async (): Promise<ToolResolver> => {
+    if (modelContext()) {
+      const cross = new CrossOriginResolver();
+      const found = await cross.discover().catch(() => []);
+      if (found.length > 0) return cross;
     }
-
-    const sim = new SimulatedResolver();
-    const simulated = await sim.discover();
-    setResolver(sim);
-    setTools(simulated);
-    setNote(modelContext()
-      ? 'WebMCP is present but no partner tools were discovered. Showing the simulated surface so the policy layer is still demonstrable.'
-      : 'This browser has no WebMCP support. Showing the simulated surface — the policy engine, ledger and consent flow below are the real ones.');
-    return sim;
+    return new SimulatedResolver();
   }, []);
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe = () => {};
+
     void (async () => {
-      const chosen = await boot();
+      const chosen = await chooseResolver();
       if (cancelled) return;
-      const m = new Mediator({ resolver: chosen, ledger, consent });
-      mediator.current = m;
-      const discovered = await chosen.discover().catch(() => []);
-      await m.publish(discovered);
-      // Absent in ChatGPT's in-app browser; where present the surface stays live.
-      return chosen.subscribe(() => void boot());
+
+      setResolver(chosen);
+      const mediatorInstance = new Mediator({ resolver: chosen, ledger, consent });
+      mediator.current = mediatorInstance;
+
+      /**
+       * Re-reads the partner surface and rebuilds every proxy from it.
+       *
+       * Partner tools come and go with partner state — the vault unregisters
+       * its read tool while locked — so a surface published once at boot goes
+       * stale the moment anything changes. Rebuilding on every toolchange is
+       * what keeps the agent's view and the partners' actual capabilities the
+       * same thing.
+       */
+      const refresh = async () => {
+        const found = await chosen.discover().catch(() => []);
+        if (cancelled) return;
+        setTools(found);
+        await mediatorInstance.publish(found);
+        const origins = new Set(found.map((t) => t.profile?.name)).size;
+        setNote(
+          chosen.id === 'cross-origin'
+            ? `Discovered ${found.length} tools across ${origins} partner origins, each mediated by a proxy the agent calls instead.`
+            : modelContext()
+              ? 'WebMCP is present but no partner tools were discovered. Showing the simulated surface so the policy layer is still demonstrable.'
+              : 'This browser has no WebMCP support. Showing the simulated surface — the policy engine, ledger and consent flow below are the real ones.',
+        );
+      };
+
+      await refresh();
+      // Absent in ChatGPT's in-app browser, where the surface is static anyway.
+      unsubscribe = chosen.subscribe(() => void refresh());
     })();
-    return () => { cancelled = true; };
-  }, [boot]);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [chooseResolver]);
 
   const call = useCallback(async (tool: DiscoveredTool, args: Record<string, unknown>) => {
     await mediator.current?.call(tool, args, undefined);
