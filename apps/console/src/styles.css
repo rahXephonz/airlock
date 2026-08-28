@@ -1,58 +1,64 @@
-:root{
-  color-scheme: dark;
-  --bg:#0b0d10; --panel:#12181f; --line:#222a33; --line2:#2c3542;
-  --fg:#d7dee6; --dim:#7c8896; --head:#9db4c8;
-  --ok:#7fd1b9; --bad:#ff8f8f; --warn:#ffcf7a; --self:#8ab4f8;
+@import "tailwindcss";
+
+/*
+ * Airlock — a border-control instrument panel.
+ *
+ * The page commits to one visual world rather than following the viewer's
+ * theme: this is a security console, and a console reads as an instrument.
+ *
+ * One structural device carries the design: the boundary seam. It divides
+ * trusted from untrusted in the diagram, forms the left rail of every scenario
+ * step, and turns red at the step where policy refuses. Everything else stays
+ * quiet.
+ */
+@theme {
+  /* Neutrals carry a cyan bias — chosen, not a default mid-grey. */
+  --color-ground: #0a0f14;
+  --color-panel: #111820;
+  --color-panel-2: #161f29;
+  --color-seam: #1c2732;
+  --color-seam-2: #26333f;
+
+  --color-ink: #dfe7ee;
+  --color-ink-2: #a3b1bf;
+  --color-ink-3: #6c7d8c;
+
+  /* Semantic, in the vocabulary of customs stamps. Kept apart from the accent. */
+  --color-self: #6ea8e8;
+  --color-trusted: #5ec9a7;
+  --color-semi: #e0a33e;
+  --color-blocked: #e06c6c;
+
+  --color-self-dim: #26405c;
+  --color-trusted-dim: #1b3830;
+  --color-semi-dim: #3a2e12;
+  --color-blocked-dim: #3d1e1e;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);
-  font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
-.wrap{max-width:1180px;margin:0 auto;padding:20px 18px 60px}
-header h1{font-size:17px;margin:0 0 4px}
-header p{margin:0;color:var(--dim);max-width:78ch}
-.thesis{color:var(--fg);border-left:2px solid var(--ok);padding-left:10px;margin:12px 0 0}
-h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--head);
-  margin:26px 0 8px;border-top:1px solid var(--line);padding-top:12px}
-.grid{display:grid;gap:10px}
-.origins{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:11px}
-.card h3{margin:0 0 3px;font-size:13px}
-.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;
-  border:1px solid var(--line2);color:var(--dim)}
-.tag.self{color:var(--self);border-color:#2c4055}
-.tag.trusted{color:var(--ok);border-color:#2b4a41}
-.tag.semi{color:var(--warn);border-color:#4d3f22}
-.tag.bad{color:var(--bad);border-color:#542c2c}
-.muted{color:var(--dim)}
-.tool{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;
-  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:10px}
-.tool code{color:var(--fg)}
-.flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-button{font:inherit;background:#1a2029;color:var(--fg);border:1px solid var(--line2);
-  border-radius:5px;padding:6px 11px;cursor:pointer}
-button:hover:not(:disabled){border-color:#42536a}
-button:disabled{opacity:.45;cursor:default}
-button.primary{background:#1d3a31;border-color:#2f5c4e;color:#bdf0e0}
-button.danger{background:#3a1d1d;border-color:#5c2f2f;color:#f0bdbd}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-pre{background:#0e141b;border:1px solid var(--line);border-radius:6px;padding:9px;
-  overflow-x:auto;margin:6px 0 0;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
-.entry{border-left:2px solid var(--line2);padding:8px 0 8px 10px;margin:8px 0}
-.entry.blocked{border-color:var(--bad)}
-.entry.allowed{border-color:var(--ok)}
-.entry.confirmed{border-color:var(--warn)}
-.entry.declined{border-color:var(--dim)}
-.entry.failed{border-color:var(--warn)}
-.modal{position:fixed;inset:0;background:#04060988;display:grid;place-items:center;
-  padding:18px;z-index:10}
-.modal .card{max-width:620px;width:100%;border-color:var(--line2)}
-.reason{margin:7px 0;padding-left:10px;border-left:2px solid var(--warn)}
-.reason.block{border-color:var(--bad)}
-.partners{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.partners figure{margin:0}
-.partners figcaption{color:var(--dim);font-size:12px;margin-bottom:4px}
-iframe.partner{width:100%;height:260px;border:1px solid var(--line);border-radius:7px;
-  background:var(--panel)}
-.banner{background:#1a1410;border:1px solid #4d3f22;color:var(--warn);
-  border-radius:7px;padding:10px;margin:12px 0}
-.banner.ok{background:#101a17;border-color:#2b4a41;color:var(--ok)}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+  }
+  body {
+    /* Painted explicitly so nothing is inherited from the host ground. */
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { text-wrap: balance; }
+  code, pre { font-variant-ligatures: none; }
+  :focus-visible {
+    outline: 2px solid var(--color-self);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+}
