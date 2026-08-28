@@ -25,7 +25,7 @@ const refusal = (reasons: readonly { code: string; detail: string }[]): string =
   JSON.stringify({
     error: 'Airlock refused this call.',
     reasons: reasons.map((r) => r.detail),
-    hint: 'This was blocked by policy, not by a transient fault. Retrying the same call will be refused again. Tell the user what you were trying to do and let them decide.',
+    hint: 'This was blocked by policy, not by a transient fault. Retrying the same call will be refused again, and there is no argument you can pass to bypass it. Tell the user what you were trying to do. If they still want it, they can release it themselves from the Airlock console, where the provenance is shown.',
   }, null, 2);
 
 export interface PublishReport {
@@ -162,7 +162,7 @@ export class Mediator {
       // Mirrors what the origin claims so an agent sees the same surface, while
       // the policy engine ignores the claim entirely.
       ...(tool.raw.annotations ? { annotations: tool.raw.annotations } : {}),
-      execute: async (args, ctx) => this.call(tool, args, ctx?.signal),
+      execute: async (args, ctx) => this.call(tool, args, ctx?.signal, false),
     };
   }
 
@@ -177,17 +177,27 @@ export class Mediator {
     tool: DiscoveredTool,
     args: Record<string, unknown>,
     outerSignal: AbortSignal | undefined,
+    /**
+     * Releases a call policy blocked.
+     *
+     * Only ever passed by the console's own UI, after a person has been shown
+     * the provenance in Airlock's words. It is deliberately not reachable from a
+     * proxy: an agent that could ask for its own refusal to be lifted would make
+     * the policy advice rather than enforcement, which is the whole distinction
+     * this project rests on.
+     */
+    override = false,
   ): Promise<string> {
     const { resolver, ledger, consent } = this.deps;
     const decision = evaluate({ tool, args, taintSources: this.taint });
     const origin = tool.raw.origin ?? 'unknown';
 
-    if (decision.disposition === 'block') {
+    if (decision.disposition === 'block' && !override) {
       ledger.append({ toolName: tool.name, origin, args, decision, outcome: 'blocked' });
       return refusal(decision.reasons);
     }
 
-    if (decision.disposition === 'confirm') {
+    if (decision.disposition === 'confirm' && !override) {
       const approved = await consent.ask(tool, args, decision);
       if (!approved) {
         ledger.append({ toolName: tool.name, origin, args, decision, outcome: 'declined' });
@@ -218,7 +228,9 @@ export class Mediator {
         origin,
         args,
         decision,
-        outcome: decision.disposition === 'confirm' ? 'confirmed' : 'allowed',
+        outcome: override
+          ? 'overridden'
+          : decision.disposition === 'confirm' ? 'confirmed' : 'allowed',
         result: result.slice(0, 2000),
       });
       return result;

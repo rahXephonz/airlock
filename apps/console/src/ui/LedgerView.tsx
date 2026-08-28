@@ -7,6 +7,7 @@ const RAIL: Record<Outcome, string> = {
   blocked: 'border-blocked',
   allowed: 'border-trusted',
   confirmed: 'border-semi',
+  overridden: 'border-semi',
   declined: 'border-ink-3',
   failed: 'border-ink-3',
 };
@@ -15,6 +16,7 @@ const TONE: Record<Outcome, Tone> = {
   blocked: 'bad',
   allowed: 'trusted',
   confirmed: 'semi',
+  overridden: 'semi',
   declined: 'neutral',
   failed: 'semi',
 };
@@ -25,7 +27,13 @@ const TONE: Record<Outcome, Tone> = {
  * This is what a confirmation dialog has no equivalent for: its reasoning is
  * prose in a transcript, gone once the turn scrolls away.
  */
-export function LedgerView({ entries }: { entries: readonly LedgerEntry[] }) {
+export function LedgerView({
+  entries,
+  onOverride,
+}: {
+  entries: readonly LedgerEntry[];
+  onOverride: (entry: LedgerEntry) => void;
+}) {
   if (entries.length === 0) {
     return (
       <p className="text-ink-3 text-sm">
@@ -43,6 +51,15 @@ export function LedgerView({ entries }: { entries: readonly LedgerEntry[] }) {
             <span>{e.toolName}</span>
             <Tag tone={TONE[e.outcome]}>{e.outcome}</Tag>
             <span className="text-ink-3">{e.origin}</span>
+            {e.outcome === 'blocked' && (
+              <button
+                onClick={() => onOverride(e)}
+                className="font-sans text-xs text-ink-3 underline underline-offset-2
+                           hover:text-ink cursor-pointer bg-transparent border-0 p-0"
+              >
+                Review and release
+              </button>
+            )}
           </div>
 
           {e.decision.reasons.map((r, i) => (

@@ -11,9 +11,30 @@ import { Scenario } from './ui/Scenario';
 import { ToolCard } from './ui/ToolCard';
 import { ConsentDialog } from './ui/ConsentDialog';
 import { LedgerView } from './ui/LedgerView';
+import { OverrideDialog } from './ui/OverrideDialog';
+import type { LedgerEntry } from './state/ledger';
 import { Button, PANEL, Section, Tag, toneForTrust } from './ui/primitives';
 
 const PARTNERS = ['vault', 'dispatch', 'bazaar'] as const;
+
+/**
+ * Origins the page was asked to treat as down, via `?offline=vault,bazaar`.
+ *
+ * Graceful degradation is a claim that is worth nothing unless someone can check
+ * it, and a partner cannot be taken offline on demand during a demo. This points
+ * the named frames at a host that does not resolve, so the failure is real
+ * rather than simulated.
+ */
+const offlineFromQuery = (): ReadonlySet<string> =>
+  new Set(
+    new URLSearchParams(window.location.search)
+      .get('offline')
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) ?? [],
+  );
+
+const DEAD_ORIGIN = 'https://airlock-this-origin-does-not-exist.netlify.app';
 
 const ledger = new Ledger();
 const consent = new ConsentQueue();
@@ -27,6 +48,10 @@ export default function App() {
   const mediator = useRef<Mediator | null>(null);
   /** Stops late-loading frames from restarting discovery that already succeeded. */
   const federated = useRef(false);
+  const [reviewing, setReviewing] = useState<LedgerEntry | null>(null);
+  /** Frames that failed to load, so an unreachable partner reads as unavailable. */
+  const [unreachable, setUnreachable] = useState<ReadonlySet<string>>(new Set());
+  const [offline] = useState(offlineFromQuery);
 
   const entries = useSyncExternalStore(ledger.subscribe, ledger.getSnapshot);
   const pending = useSyncExternalStore(consent.subscribe, consent.getSnapshot);
@@ -136,8 +161,21 @@ export default function App() {
   }, [chooseResolver, reloadKey]);
 
   const call = useCallback(async (tool: DiscoveredTool, args: Record<string, unknown>) => {
-    await mediator.current?.call(tool, args, undefined);
+    await mediator.current?.call(tool, args, undefined, false);
   }, []);
+
+  /**
+   * Re-runs a blocked call with the block released.
+   *
+   * Reachable only from the ledger, and only after the override dialog has shown
+   * the provenance. Nothing an agent can call leads here.
+   */
+  const release = useCallback(async (entry: LedgerEntry) => {
+    const tool = tools.find((t) => t.name === entry.toolName);
+    setReviewing(null);
+    if (!tool) return;
+    await mediator.current?.call(tool, entry.args as Record<string, unknown>, undefined, true);
+  }, [tools]);
 
   const runPrompt = useCallback(async (tool: DiscoveredTool) => {
     const props = (tool.inputSchema.properties ?? {}) as Record<string, { enum?: unknown[] }>;
@@ -164,15 +202,25 @@ export default function App() {
           {(['console', ...PARTNERS] as const).map((name) => {
             const p = TRUST[name];
             const count = tools.filter((t) => t.profile?.name === name).length;
+            // An origin that failed to load, or that a working federation found
+            // nothing from, is reported as unavailable rather than as empty.
+            const down =
+              name !== 'console' &&
+              (unreachable.has(name) || offline.has(name) || (federatedNow && count === 0));
             return (
               <div className={`${PANEL} p-4`} key={name}>
-                <h3 className="font-mono text-sm font-semibold m-0 mb-2.5">{p.name}</h3>
+                <div className="flex gap-2 items-center flex-wrap mb-2.5">
+                  <h3 className="font-mono text-sm font-semibold m-0">{p.name}</h3>
+                  {down && <Tag tone="bad">unavailable</Tag>}
+                </div>
                 <Tag tone={toneForTrust(p.trust)}>{p.trust}</Tag>
                 <p className="text-ink-2 text-[13.5px] mt-2.5 leading-[1.5]">{p.rationale}</p>
                 <p className="font-mono text-xs text-ink-3 mt-3 tabular-nums">
                   {name === 'console'
                     ? 'policy engine'
-                    : `${count} tool${count === 1 ? '' : 's'} discovered`}
+                    : down
+                      ? 'did not load — its tools are absent'
+                      : `${count} tool${count === 1 ? '' : 's'} discovered`}
                 </p>
               </div>
             );
@@ -224,18 +272,29 @@ export default function App() {
           {PARTNERS.map((name) => (
             <figure key={name} className="m-0">
               <figcaption className="font-mono text-[11.5px] text-ink-3 mb-1.5">
-                {name} · {TRUST[name].url.replace('https://', '')}
+                {name} · {offline.has(name)
+                  ? 'offline (demonstrating degradation)'
+                  : TRUST[name].url.replace('https://', '')}
               </figcaption>
               <iframe
                 className="w-full h-[272px] border border-seam rounded-[3px] bg-panel"
-                src={TRUST[name].url}
+                src={offline.has(name) ? DEAD_ORIGIN : TRUST[name].url}
                 allow="tools"
                 title={name}
                 // A frame that finishes loading after discovery gave up is the
                 // one case a retry cannot cover, so its arrival triggers another.
                 onLoad={() => {
+                  setUnreachable((prev) => {
+                    if (!prev.has(name)) return prev;
+                    const next = new Set(prev);
+                    next.delete(name);
+                    return next;
+                  });
                   if (!federated.current) setReloadKey((k) => k + 1);
                 }}
+                // A partner that is down must read as unavailable rather than
+                // taking the console with it. AGENT.md §4 calls this mandatory.
+                onError={() => setUnreachable((prev) => new Set(prev).add(name))}
               />
             </figure>
           ))}
@@ -246,10 +305,17 @@ export default function App() {
         label="Audit log"
         lede="Every mediated call and the reasoning behind it, kept as data rather than as prose in a transcript."
       >
-        <LedgerView entries={entries} />
+        <LedgerView entries={entries} onOverride={setReviewing} />
       </Section>
 
       {pending && <ConsentDialog request={pending} />}
+      {reviewing && (
+        <OverrideDialog
+          entry={reviewing}
+          onConfirm={() => void release(reviewing)}
+          onCancel={() => setReviewing(null)}
+        />
+      )}
     </div>
   );
 }

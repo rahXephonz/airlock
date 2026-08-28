@@ -1,6 +1,13 @@
 import type { Decision, DiscoveredTool } from '@airlock/shared';
 
-export type Outcome = 'allowed' | 'blocked' | 'confirmed' | 'declined' | 'failed';
+export type Outcome =
+  | 'allowed'
+  | 'blocked'
+  | 'confirmed'
+  | 'declined'
+  | 'failed'
+  /** A blocked call a person released from the console, seeing the provenance. */
+  | 'overridden';
 
 export interface LedgerEntry {
   readonly id: string;

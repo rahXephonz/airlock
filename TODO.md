@@ -14,7 +14,7 @@ robustness case, and packaging.
 
 ## P0 — cannot submit without these
 
-- [ ] **1. Provenance-labelled consent path**
+- [x] **1. Provenance-labelled consent path**
       AGENT.md §1 says Airlock "refuses to escalate without explicit,
       provenance-labelled user consent". Blocks are currently terminal, with no
       escalation at all. A blocked call must be overridable **only from the
@@ -23,7 +23,7 @@ robustness case, and packaging.
       with the ChatGPT transcript, where the user was asked to approve
       exfiltration in the seller's own sales copy.
 
-- [ ] **2. Graceful degradation when a partner is unreachable**
+- [x] **2. Graceful degradation when a partner is unreachable**
       AGENT.md §4 calls this mandatory and it has never been tested. If `vault`
       is down when a judge opens the page, the console must show it as
       unavailable — not hang, not blank, not throw. Test by pointing a frame at
@@ -36,8 +36,8 @@ robustness case, and packaging.
 
 - [ ] **4. LICENSE file** detectable in the GitHub About section.
 
-- [ ] **5. Public GitHub repo** — push, confirm the About section shows the
-      licence.
+- [x] **5. Public GitHub repo** — pushed to rahXephonz/airlock. Still needs the
+      licence visible in the About section.
 
 - [ ] **6. Testing instructions** — which browser, which flag, what to expect in
       each. Brave 151 works without a flag; Chrome needs
@@ -71,6 +71,27 @@ robustness case, and packaging.
       across three weeks on the free tier. All four sites are on one Netlify
       account, one billing state, no external API dependency.
 
+## Judging criteria, and where we stand
+
+The entry is scored on four things. Recording the read so the remaining work is
+aimed rather than merely completed.
+
+- **WebMCP leverage** — strong but not legible. Both APIs, state-driven
+  registration, signal passthrough, annotations, structured errors,
+  model-readable schemas, cross-origin discovery and mediated proxies are all
+  implemented. Judges score the code, so the README needs a table mapping each
+  capability to the file it lives in. An agent-facing `airlock_explain_decision`
+  tool would push this further: a tool surface designed for a model to reason
+  with rather than exposed for it to call.
+- **Execution** — was the weakest of the four. The two gaps above are now
+  closed; what remains is the README, the licence and the testing instructions.
+- **Potential impact** — the evidence exists and the case is not yet written.
+  `docs/FINDINGS.md` is worth something to anyone adopting WebMCP, independently
+  of whether this entry places.
+- **Creativity** — taint tracking across an origin boundary, proxies that make
+  policy the only path to a capability, and parameter-overreach detection at
+  discovery time. Nothing else does provenance across a WebMCP trust boundary.
+
 ## Done
 
 - [x] Spike closed — both browsers measured, findings recorded before any
@@ -87,3 +108,7 @@ robustness case, and packaging.
 - [x] Attack blocked end to end across four real origins in Brave
 - [x] Four silent-failure defects found and documented in `docs/FINDINGS.md`
 - [x] Netlify badge disabled on all four sites
+- [x] Console rebuilt as one narrative page in Tailwind, opening with the
+      transcript contrast and the trust-boundary diagram
+- [x] Human-only override for blocked calls, unreachable via any proxy
+- [x] Graceful degradation, checkable live with `?offline=vault,bazaar`
