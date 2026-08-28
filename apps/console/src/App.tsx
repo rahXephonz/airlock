@@ -114,10 +114,39 @@ export default function App() {
 
         const report = await mediatorInstance.publish(found);
         if (cancelled) return;
+
+        // Foreign schemas have already failed twice in ways no exception
+        // described, so what one actually looks like is reported rather than
+        // assumed.
+        const sample = found.find((t) => t.name.includes('publish_review')) ?? found[0];
+        const probe = sample
+          ? (() => {
+              const original: unknown = sample.raw.inputSchema;
+              const keys = (() => {
+                try {
+                  return Object.keys(original as object).join('/') || 'none';
+                } catch (err) {
+                  return `unreadable (${err instanceof Error ? err.name : 'error'})`;
+                }
+              })();
+              const serialised = (() => {
+                try {
+                  return JSON.stringify(original)?.slice(0, 120) ?? 'undefined';
+                } catch (err) {
+                  return `unserialisable (${err instanceof Error ? err.name : 'error'})`;
+                }
+              })();
+              const normalisedKeys = Object.keys(sample.inputSchema.properties ?? {});
+              return ` Schema probe on ${sample.name}: typeof=${typeof original}, ` +
+                `ownKeys=${keys}, json=${serialised}, normalised properties=` +
+                `${normalisedKeys.length ? normalisedKeys.join('/') : 'none'}.`;
+            })()
+          : '';
+
         setDiagnostic(
-          report.failures.length === 0
+          (report.failures.length === 0
             ? `${report.registered} mediated proxies registered. The agent sees these and never the partner tools themselves.`
-            : `${report.registered} of ${found.length} proxies registered. Failed: ${report.failures.join('; ')}`,
+            : `${report.registered} of ${found.length} proxies registered. Failed: ${report.failures.join('; ')}`) + probe,
         );
       };
 

@@ -49,6 +49,10 @@ export interface MediatorDeps {
  */
 export class Mediator {
   private controller: AbortController | undefined;
+  /** Names currently published, so an unchanged surface is not republished. */
+  private signature = '';
+  private lastReport: PublishReport = { registered: 0, failures: [] };
+  private publishing: Promise<PublishReport> | undefined;
   private taint: TaintSource[] = [];
   private listeners = new Set<() => void>();
 
@@ -67,6 +71,7 @@ export class Mediator {
   dispose = (): void => {
     this.controller?.abort();
     this.controller = undefined;
+    this.signature = '';
   };
 
   subscribe = (listener: () => void): (() => void) => {
@@ -93,10 +98,36 @@ export class Mediator {
     const mc = modelContext();
     if (!mc) return { registered: 0, failures: ['WebMCP is not available in this browser.'] };
 
+    // Registering a proxy itself changes the tool list, which fires toolchange,
+    // which asks for another publish. Without a check for whether the surface
+    // actually differs, the console republishes in response to its own writes
+    // and collides with the names it just claimed.
+    const signature = tools
+      .map((t) => `${t.raw.origin ?? '?'}|${t.name}`)
+      .sort()
+      .join(',');
+    if (signature === this.signature && this.controller) return this.lastReport;
+
+    // Concurrent publishes would race for the same names, so they queue.
+    if (this.publishing) await this.publishing.catch(() => undefined);
+
+    this.publishing = this.republish(tools, signature);
+    try {
+      return await this.publishing;
+    } finally {
+      this.publishing = undefined;
+    }
+  }
+
+  private async republish(
+    tools: readonly DiscoveredTool[],
+    signature: string,
+  ): Promise<PublishReport> {
+    const mc = modelContext()!;
     this.controller?.abort();
     // Unregistration is observed to complete out of band, so the surface is
     // given a turn to clear before the replacement claims the same names.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     this.controller = new AbortController();
     const { signal } = this.controller;
@@ -113,7 +144,9 @@ export class Mediator {
       }
     }
 
-    return { registered, failures };
+    this.signature = signature;
+    this.lastReport = { registered, failures };
+    return this.lastReport;
   }
 
   private proxyFor(tool: DiscoveredTool): RegisterableTool {
