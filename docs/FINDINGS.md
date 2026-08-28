@@ -87,3 +87,44 @@ What survives, and is stronger:
 
 Airlock's claim is therefore enforcement that does not depend on the model's
 judgement — which holds whether or not the next model resists injection better.
+
+## Cross-origin behaviour measured against the real console
+
+Discovery across four deployed origins was built and run in Brave 151, which
+supports more of WebMCP than either browser tested during the spike.
+
+| capability | Chrome 149+ (flag) | ChatGPT in-app | Brave 151 |
+| --- | --- | --- | --- |
+| `getTools({ fromOrigins })` | answers | resolves, 0 foreign, no error | answers |
+| tools inside an iframe | yes | no `modelContext` at all | yes |
+| declarative form API | yes | no | yes |
+| `toolchange` across origins | untested | no API | does not reach the embedder |
+| `inputSchema` across origins | untested | — | **arrives as a JSON string** |
+
+### Everything fails silently
+
+Four separate defects were found in one session. Not one threw an exception
+describing its cause, and the page looked healthy through all of them:
+
+1. **`getTools({ fromOrigins })` never settled** in Brave. Awaiting it stalled
+   discovery on the first attempt, leaving the console reporting that it was
+   still looking. A promise that never settles is indistinguishable from a slow
+   one, so discovery is raced against a deadline.
+2. **Foreign `inputSchema` is a JSON string**, not the object it is
+   same-origin. Passing it back to `registerTool` fails with "Failed to convert
+   value to 'object'", and reading `.properties` yields nothing, which silently
+   disabled parameter-overreach detection. `Object.keys` on it returns character
+   indices — the only visible signal that the type had changed.
+3. **A replaced mediator left its proxies registered**, so its successor
+   collided with itself and reported "Duplicate tool name", which reads like a
+   partner fault.
+4. **Registering a proxy fires `toolchange`**, which requested another publish,
+   which collided with the names just claimed. The console republished in
+   response to its own writes.
+
+The lesson generalises past this project: a WebMCP consumer cannot rely on
+`try`/`catch`. It has to verify results, put deadlines on calls, treat
+`inputSchema` as either a string or an object, compare a tool surface before
+republishing it, and surface partial failure. Reporting "0 of 5 proxies
+registered" is what found defects 2, 3 and 4 within minutes; before that line
+existed the console appeared to work while handing the agent nothing.

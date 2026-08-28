@@ -112,9 +112,25 @@ const plainify = (value: unknown, depth = 0): unknown => {
 
 const EMPTY_SCHEMA: JsonSchema = { type: 'object', properties: {}, additionalProperties: false };
 
-/** Reads a foreign tool's schema into data that can be re-registered. */
+/**
+ * Reads a foreign tool's schema into data that can be re-registered.
+ *
+ * Across an origin boundary the schema arrives as a JSON string rather than the
+ * object it is same-origin. Nothing signals the change — property access simply
+ * yields character indices — so both forms are accepted.
+ */
 export const normaliseSchema = (schema: unknown): JsonSchema => {
-  const plain = plainify(schema);
+  const source = typeof schema === 'string'
+    ? ((): unknown => {
+        try {
+          return JSON.parse(schema);
+        } catch {
+          return undefined;
+        }
+      })()
+    : schema;
+
+  const plain = plainify(source);
   if (plain && typeof plain === 'object' && !Array.isArray(plain)) {
     const candidate = plain as JsonSchema;
     return candidate.properties || candidate.type ? candidate : EMPTY_SCHEMA;
