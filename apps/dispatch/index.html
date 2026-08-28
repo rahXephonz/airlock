@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dispatch — Airlock fixture</title>
+<link rel="stylesheet" href="/fixture.css">
+</head>
+<body>
+<h1>dispatch</h1>
+<div class="role">
+  Fixture origin. The only place a real outbound action happens. Trusted by the
+  console, and write-capable — which is what makes every call here matter.
+</div>
+
+<h2>channel</h2>
+<div class="row">
+  <select id="channel">
+    <option value="">— none selected —</option>
+    <option value="orders">orders (public)</option>
+    <option value="support">support (private)</option>
+  </select>
+  <span id="state" class="muted"></span>
+</div>
+<div class="muted">
+  With no channel selected there is nothing to send to, so
+  <code>dispatch_send_message</code> is not registered.
+</div>
+
+<h2>compose (declarative WebMCP tool)</h2>
+<form id="compose"
+      toolname="dispatch_compose_message"
+      tooldescription="Fill in and send a message on the currently selected dispatch channel. Sending is a real outbound action.">
+  <div class="row">
+    <input name="body" placeholder="message body" size="42"
+           toolparamdescription="The exact message text to send.">
+    <button type="submit">send</button>
+  </div>
+</form>
+<div class="muted" id="declState">
+  Declarative API. Present in Chrome; absent in ChatGPT's in-app browser.
+</div>
+
+<h2>sent</h2>
+<div id="sent" class="muted">nothing sent</div>
+
+<h2>tool activity</h2>
+<div id="log" class="muted">nothing yet</div>
+
+<script type="module">
+const CONSOLE_ORIGIN = 'https://airlock-console.netlify.app';
+
+const logEl = document.getElementById('log');
+const sentEl = document.getElementById('sent');
+const stateEl = document.getElementById('state');
+const channelEl = document.getElementById('channel');
+let n = 0, sentCount = 0;
+
+function log(msg, cls = '') {
+  if (n++ === 0) logEl.textContent = '';
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = `${new Date().toISOString().slice(11, 19)}  ${msg}`;
+  logEl.prepend(d);
+}
+
+function recordSent(channel, body) {
+  if (sentCount++ === 0) sentEl.textContent = '';
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.textContent = `[${channel}] ${body}`;
+  sentEl.prepend(d);
+}
+
+const settle = (ms, signal) => new Promise((resolve, reject) => {
+  if (signal?.aborted) return reject(new DOMException('aborted', 'AbortError'));
+  const t = setTimeout(resolve, ms);
+  signal?.addEventListener('abort', () => {
+    clearTimeout(t);
+    reject(new DOMException('aborted', 'AbortError'));
+  }, { once: true });
+});
+
+const mc = document.modelContext;
+if (!mc?.registerTool) {
+  log('No WebMCP in this browser. Tools not registered.', 'bad');
+} else {
+  await mc.registerTool({
+    name: 'dispatch_list_channels',
+    description:
+      'List the channels this dispatch account can send on, and which one is currently selected. Read-only.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    execute: async (_a, { signal } = {}) => {
+      await settle(100, signal);
+      log('dispatch_list_channels');
+      return JSON.stringify({
+        channels: [
+          { id: 'orders', visibility: 'public' },
+          { id: 'support', visibility: 'private' },
+        ],
+        selected: channelEl.value || null,
+      }, null, 2);
+    },
+  }, { exposedTo: [CONSOLE_ORIGIN] });
+
+  // The send tool exists only while a channel is selected.
+  let sendController = null;
+
+  async function syncSendTool() {
+    const channel = channelEl.value;
+    stateEl.textContent = channel ? `sending to ${channel}` : 'no channel';
+    stateEl.className = channel ? 'ok' : 'warn';
+
+    sendController?.abort();
+    sendController = null;
+
+    if (!channel) {
+      log('dispatch_send_message unregistered — no channel selected', 'warn');
+      return;
+    }
+
+    sendController = new AbortController();
+    await mc.registerTool({
+      name: 'dispatch_send_message',
+      description:
+        `Send a message on the "${channel}" channel. This is a real outbound action and cannot be undone. Only call it when the user has directly asked for a message to be sent.`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          body: { type: 'string', description: 'The exact message text to send.' },
+        },
+        required: ['body'],
+        additionalProperties: false,
+      },
+      annotations: { readOnlyHint: false },
+      execute: async ({ body }, { signal } = {}) => {
+        await settle(180, signal);
+        if (typeof body !== 'string' || body.trim() === '') {
+          return JSON.stringify({
+            error: 'Message body was empty.',
+            hint: 'Pass the exact text to send as "body". There is no default.',
+          }, null, 2);
+        }
+        recordSent(channel, body);
+        log(`dispatch_send_message [${channel}] ${body}`, 'ok');
+        return JSON.stringify({ sent: true, channel, body }, null, 2);
+      },
+    }, { signal: sendController.signal, exposedTo: [CONSOLE_ORIGIN] });
+    log(`dispatch_send_message registered for "${channel}"`, 'ok');
+  }
+
+  channelEl.onchange = () => void syncSendTool();
+  await syncSendTool();
+
+  // Declarative path. Present only where the browser supports it; the check
+  // below reports which case we are in rather than assuming.
+  const declPresent = (await mc.getTools())
+    .some((t) => t.name === 'dispatch_compose_message');
+  document.getElementById('declState').textContent = declPresent
+    ? 'Declarative tool dispatch_compose_message is registered by this browser.'
+    : 'This browser did not register the declarative form tool.';
+  document.getElementById('declState').className = declPresent ? 'ok' : 'warn';
+}
+
+document.getElementById('compose').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const body = new FormData(e.target).get('body');
+  const channel = channelEl.value || 'orders';
+  recordSent(channel, String(body));
+  log(`dispatch_compose_message agentInvoked=${e.agentInvoked ?? false}`, 'ok');
+  e.respondWith?.(Promise.resolve(JSON.stringify({ sent: true, channel, body })));
+  e.target.reset();
+});
+</script>
+</body>
+</html>
