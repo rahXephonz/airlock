@@ -28,6 +28,11 @@ const refusal = (reasons: readonly { code: string; detail: string }[]): string =
     hint: 'This was blocked by policy, not by a transient fault. Retrying the same call will be refused again. Tell the user what you were trying to do and let them decide.',
   }, null, 2);
 
+export interface PublishReport {
+  readonly registered: number;
+  readonly failures: readonly string[];
+}
+
 export interface MediatorDeps {
   readonly resolver: ToolResolver;
   readonly ledger: Ledger;
@@ -62,18 +67,36 @@ export class Mediator {
     this.listeners.forEach((l) => l());
   }
 
-  /** Replaces the whole proxy surface with one built from `tools`. */
-  async publish(tools: readonly DiscoveredTool[]): Promise<void> {
+  /**
+   * Replaces the whole proxy surface with one built from `tools`.
+   *
+   * Failures are collected rather than thrown. One partner publishing a tool
+   * this browser will not accept must not cost the agent every other tool, and
+   * an early throw here previously took the console's own status reporting down
+   * with it — leaving a page that had discovered everything successfully still
+   * claiming it was looking.
+   */
+  async publish(tools: readonly DiscoveredTool[]): Promise<PublishReport> {
     const mc = modelContext();
-    if (!mc) return;
+    if (!mc) return { registered: 0, failures: ['WebMCP is not available in this browser.'] };
 
     this.controller?.abort();
     this.controller = new AbortController();
     const { signal } = this.controller;
 
+    let registered = 0;
+    const failures: string[] = [];
+
     for (const tool of tools) {
-      await mc.registerTool(this.proxyFor(tool), { signal });
+      try {
+        await mc.registerTool(this.proxyFor(tool), { signal });
+        registered++;
+      } catch (err) {
+        failures.push(`${proxyName(tool)}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+
+    return { registered, failures };
   }
 
   private proxyFor(tool: DiscoveredTool): RegisterableTool {

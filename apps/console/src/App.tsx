@@ -97,14 +97,24 @@ export default function App() {
         const found = await chosen.discover().catch(() => []);
         if (cancelled) return;
         setTools(found);
-        await mediatorInstance.publish(found);
+
         const origins = new Set(found.map((t) => t.profile?.name)).size;
+        // Reported before publishing, so a failure to register proxies cannot
+        // leave the page claiming it is still looking for tools it already has.
         setNote(
           chosen.id === 'cross-origin'
-            ? `Discovered ${found.length} tools across ${origins} partner origins, each mediated by a proxy the agent calls instead.`
+            ? `Discovered ${found.length} tools across ${origins} partner origins.`
             : modelContext()
               ? 'WebMCP is present but no partner tools were discovered. Showing the simulated surface so the policy layer is still demonstrable.'
               : 'This browser has no WebMCP support. Showing the simulated surface — the policy engine, ledger and consent flow below are the real ones.',
+        );
+
+        const report = await mediatorInstance.publish(found);
+        if (cancelled) return;
+        setDiagnostic(
+          report.failures.length === 0
+            ? `${report.registered} mediated proxies registered. The agent sees these and never the partner tools themselves.`
+            : `${report.registered} of ${found.length} proxies registered. Failed: ${report.failures.join('; ')}`,
         );
       };
 
@@ -191,9 +201,7 @@ export default function App() {
         </div>
         <button onClick={() => setReloadKey((k) => k + 1)}>Re-run discovery</button>
       </div>
-      {diagnostic && resolver?.id !== 'cross-origin' && (
-        <div className="muted" style={{ marginTop: -4 }}>{diagnostic}</div>
-      )}
+      {diagnostic && <div className="muted" style={{ marginTop: -4 }}>{diagnostic}</div>}
 
       <h2>Origins</h2>
       <div className="grid origins">
