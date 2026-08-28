@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { TRUST, type DiscoveredTool, type ToolResolver } from '@airlock/shared';
+import { ORIGINS, TRUST, type DiscoveredTool, type ToolResolver } from '@airlock/shared';
 import { CrossOriginResolver } from './webmcp/crossOriginResolver';
 import { SimulatedResolver } from './webmcp/simulatedResolver';
 import { Mediator } from './webmcp/mediation';
@@ -17,6 +17,8 @@ const consent = new ConsentQueue();
 
 export default function App() {
   const [resolver, setResolver] = useState<ToolResolver | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [diagnostic, setDiagnostic] = useState('');
   const [tools, setTools] = useState<DiscoveredTool[]>([]);
   const [note, setNote] = useState('Discovering tools…');
   const mediator = useRef<Mediator | null>(null);
@@ -32,11 +34,32 @@ export default function App() {
    * an error that never arrives.
    */
   const chooseResolver = useCallback(async (): Promise<ToolResolver> => {
-    if (modelContext()) {
-      const cross = new CrossOriginResolver();
+    if (!modelContext()) return new SimulatedResolver();
+
+    // Partner tools appear only once each iframe has loaded and run its own
+    // registerTool calls, which happens after this component mounts. Asking
+    // once on mount reliably finds nothing and falls back to the simulated
+    // surface on a browser that was perfectly capable of the real one, so
+    // discovery is retried while the frames come up.
+    const cross = new CrossOriginResolver();
+    for (let attempt = 0; attempt < 12; attempt++) {
       const found = await cross.discover().catch(() => []);
       if (found.length > 0) return cross;
+      await new Promise((r) => setTimeout(r, 400));
     }
+
+    // Says what was actually seen rather than only that nothing was found, so
+    // a browser that has WebMCP but withholds cross-origin tools can be told
+    // apart from one that never loaded the partner frames at all.
+    const mc = modelContext();
+    const everything = mc ? await mc.getTools().catch(() => []) : [];
+    const withOrigins = mc
+      ? await mc.getTools({ fromOrigins: [ORIGINS.vault, ORIGINS.dispatch, ORIGINS.bazaar] }).catch(() => [])
+      : [];
+    setDiagnostic(
+      `getTools() returned ${everything.length}; getTools({ fromOrigins }) returned ${withOrigins.length}, ` +
+      `of which ${withOrigins.filter((t) => t.origin && t.origin !== window.location.origin).length} were foreign.`,
+    );
     return new SimulatedResolver();
   }, []);
 
@@ -85,7 +108,7 @@ export default function App() {
       cancelled = true;
       unsubscribe();
     };
-  }, [chooseResolver]);
+  }, [chooseResolver, reloadKey]);
 
   const call = useCallback(async (tool: DiscoveredTool, args: Record<string, unknown>) => {
     await mediator.current?.call(tool, args, undefined);
@@ -141,10 +164,27 @@ export default function App() {
       </header>
 
       {PARTNERS.map((name) => (
-        <iframe key={name} className="partner" src={TRUST[name].url} allow="tools" title={name} />
+        <iframe
+          key={name}
+          className="partner"
+          src={TRUST[name].url}
+          allow="tools"
+          title={name}
+          // A frame that finishes loading after discovery gave up is the one
+          // case a retry cannot cover, so its arrival triggers another pass.
+          onLoad={() => setReloadKey((k) => k + 1)}
+        />
       ))}
 
-      <div className={`banner ${resolver?.id === 'cross-origin' ? 'ok' : ''}`}>{note}</div>
+      <div className="row">
+        <div className={`banner ${resolver?.id === 'cross-origin' ? 'ok' : ''}`} style={{ flex: 1 }}>
+          {note}
+        </div>
+        <button onClick={() => setReloadKey((k) => k + 1)}>Re-run discovery</button>
+      </div>
+      {diagnostic && resolver?.id !== 'cross-origin' && (
+        <div className="muted" style={{ marginTop: -4 }}>{diagnostic}</div>
+      )}
 
       <h2>Origins</h2>
       <div className="grid origins">
