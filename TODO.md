@@ -29,17 +29,17 @@ robustness case, and packaging.
       unavailable — not hang, not blank, not throw. Test by pointing a frame at
       a dead origin.
 
-- [ ] **3. README with an architecture diagram**
+- [x] **3. README with an architecture diagram**
       Four origins and the trust boundary. A judge reading the repo alone has to
       understand the federation without watching anything. Must also carry the
       novelty answer and the silent-failure findings.
 
-- [ ] **4. LICENSE file** detectable in the GitHub About section.
+- [x] **4. LICENSE file** detectable in the GitHub About section.
 
 - [x] **5. Public GitHub repo** — pushed to rahXephonz/airlock. Still needs the
       licence visible in the About section.
 
-- [ ] **6. Testing instructions** — which browser, which flag, what to expect in
+- [x] **6. Testing instructions** — which browser, which flag, what to expect in
       each. Brave 151 works without a flag; Chrome needs
       `chrome://flags/#enable-webmcp-testing`; ChatGPT's browser degrades.
 
@@ -112,3 +112,6 @@ aimed rather than merely completed.
       transcript contrast and the trust-boundary diagram
 - [x] Human-only override for blocked calls, unreachable via any proxy
 - [x] Graceful degradation, checkable live with `?offline=vault,bazaar`
+- [x] Agent-facing policy tools — airlock_list_origins, airlock_explain_decision
+- [x] Fixtures restyled in Tailwind against the console's tokens
+- [x] README with the capability-to-file map, licence, testing instructions
