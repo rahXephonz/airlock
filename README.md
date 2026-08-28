@@ -48,31 +48,21 @@ under a framing the attacker wrote.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    agent(["Agent · sees only airlock_* proxies"])
+![Four origins publish tools to the Airlock console. Reads from vault and bazaar
+enter the console; a write with untainted arguments reaches dispatch, while a
+write carrying bazaar text is refused before it leaves.](docs/architecture.png)
 
-    subgraph reads["Reads — where data enters"]
-        direction TB
-        vault["vault · trusted · holds the billing record"]
-        bazaar["bazaar · semi-trusted · seller text is hostile"]
-    end
+### The attack, call by call
 
-    console["console — Airlock · policy · provenance · taint · ledger"]
+The scenario the console runs, and where policy intervenes. Note the dispatch
+lane: it never hears about the refused call at all.
 
-    refused{{"REFUSED — crosses a trust boundary you did not ask to cross"}}
+![Sequence of the exfiltration attempt. The agent reads a bazaar listing, reads
+the vault billing record, then asks to send the account reference through
+dispatch. The console refuses, naming the origin and the matched text.](docs/the-attack.png)
 
-    dispatch["dispatch · trusted · the only real outbound write"]
-
-    agent --> console
-    vault -->|read| console
-    bazaar -->|"read · tainted"| console
-    console -->|write| dispatch
-    console -->|"write · tainted"| refused
-```
-
-More diagrams, including the attack call by call, in
-[`docs/diagrams.md`](docs/diagrams.md).
+Mermaid sources for both, and notes on what the Excalidraw importer does to
+them, are in [`docs/diagrams.md`](docs/diagrams.md).
 
 Four independently deployed origins, one Netlify account:
 
