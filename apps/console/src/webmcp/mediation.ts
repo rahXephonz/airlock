@@ -56,6 +56,19 @@ export class Mediator {
 
   taintSources = (): readonly TaintSource[] => this.taint;
 
+  /**
+   * Withdraws every proxy this mediator published.
+   *
+   * Without it a replaced mediator leaves its surface registered, and the
+   * replacement collides with its predecessor on every name — reported as
+   * "Duplicate tool name", which reads like a bug in the partner rather than
+   * a mediator that was never torn down.
+   */
+  dispose = (): void => {
+    this.controller?.abort();
+    this.controller = undefined;
+  };
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -81,6 +94,10 @@ export class Mediator {
     if (!mc) return { registered: 0, failures: ['WebMCP is not available in this browser.'] };
 
     this.controller?.abort();
+    // Unregistration is observed to complete out of band, so the surface is
+    // given a turn to clear before the replacement claims the same names.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     this.controller = new AbortController();
     const { signal } = this.controller;
 

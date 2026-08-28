@@ -22,6 +22,8 @@ export default function App() {
   const [tools, setTools] = useState<DiscoveredTool[]>([]);
   const [note, setNote] = useState('Discovering tools…');
   const mediator = useRef<Mediator | null>(null);
+  /** Stops late-loading frames from restarting discovery that already succeeded. */
+  const federated = useRef(false);
 
   const entries = useSyncExternalStore(ledger.subscribe, ledger.getSnapshot);
   const pending = useSyncExternalStore(consent.subscribe, consent.getSnapshot);
@@ -81,6 +83,7 @@ export default function App() {
       if (cancelled) return;
 
       setResolver(chosen);
+      federated.current = chosen.id === 'cross-origin';
       const mediatorInstance = new Mediator({ resolver: chosen, ledger, consent });
       mediator.current = mediatorInstance;
 
@@ -126,6 +129,9 @@ export default function App() {
     return () => {
       cancelled = true;
       unsubscribe();
+      // The replacement will claim the same proxy names, so this surface has to
+      // go with the mediator that published it.
+      mediator.current?.dispose();
     };
   }, [chooseResolver, reloadKey]);
 
@@ -191,7 +197,9 @@ export default function App() {
           title={name}
           // A frame that finishes loading after discovery gave up is the one
           // case a retry cannot cover, so its arrival triggers another pass.
-          onLoad={() => setReloadKey((k) => k + 1)}
+          onLoad={() => {
+            if (!federated.current) setReloadKey((k) => k + 1);
+          }}
         />
       ))}
 
