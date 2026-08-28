@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Airlock spike — consumer</title>
+<style>
+  body{font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:16px;
+       background:#0b0d10;color:#d7dee6}
+  h1{font-size:14px;margin:0 0 4px;color:#7fd1b9}
+  h2{font-size:13px;margin:16px 0 4px;color:#9db4c8}
+  .muted{color:#7c8896}
+  button{font:inherit;background:#1a2029;color:#d7dee6;border:1px solid #2c3542;
+         border-radius:4px;padding:6px 10px;cursor:pointer;margin:8px 8px 0 0}
+  iframe{width:100%;height:170px;border:1px solid #2c3542;border-radius:4px;margin-top:8px}
+  #log{white-space:pre-wrap;border-top:1px solid #222a33;padding-top:8px;margin-top:8px}
+  .ok{color:#7fd1b9}.bad{color:#ff8f8f}.hdr{color:#e6c07b}
+</style>
+</head>
+<body>
+<h1>consumer origin — Airlock spike</h1>
+<div class="muted" id="origin"></div>
+
+<button id="probe">1. probe capabilities</button>
+<button id="cross">2. getTools({ fromOrigins })</button>
+<button id="exec">3. executeTool (cross-origin)</button>
+
+<h2>provider in iframe allow="tools"</h2>
+<iframe id="frame" src="https://airlock-spike-provider.netlify.app" allow="tools"></iframe>
+
+<h2>result</h2>
+<div id="log"></div>
+
+<script type="module">
+const PROVIDER = 'https://airlock-spike-provider.netlify.app';
+const logEl = document.getElementById('log');
+document.getElementById('origin').textContent = location.origin;
+
+function log(msg, cls = '') {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+}
+
+// Register a top-level tool so ChatGPT's in-app browser has something to discover
+// even where iframes and fromOrigins are unsupported.
+if (document.modelContext?.registerTool) {
+  try {
+    await document.modelContext.registerTool({
+      name: 'spike_local_ping',
+      description: 'Return a fixed string from the Airlock consumer origin. Proves top-level tool registration works in this browser.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: true },
+      execute: async () => `pong from ${location.origin}`
+    });
+    log('top-level spike_local_ping registered', 'ok');
+  } catch (err) {
+    log(`top-level register failed: ${err?.message ?? err}`, 'bad');
+  }
+}
+
+document.getElementById('probe').onclick = () => {
+  const mc = document.modelContext;
+  log('--- capability probe ---', 'hdr');
+  log(`document.modelContext: ${typeof mc}`);
+  if (!mc) { log('no WebMCP in this browser', 'bad'); return; }
+  for (const m of ['registerTool', 'getTools', 'executeTool', 'addEventListener']) {
+    log(`  ${m}: ${typeof mc[m]}`, typeof mc[m] === 'function' ? 'ok' : 'bad');
+  }
+  log(`  iframe allow="tools" honored: ${document.featurePolicy?.allowsFeature?.('tools') ?? 'unknown'}`);
+};
+
+let crossTools = [];
+
+document.getElementById('cross').onclick = async () => {
+  log('--- getTools({ fromOrigins }) ---', 'hdr');
+  try {
+    crossTools = await document.modelContext.getTools({ fromOrigins: [PROVIDER] });
+    log(`returned ${crossTools.length} tool(s)`, crossTools.length ? 'ok' : 'bad');
+    for (const t of crossTools) {
+      log(`  ${t.name}  origin=${t.origin ?? '(none)'}  readOnlyHint=${t.annotations?.readOnlyHint}`);
+    }
+  } catch (err) {
+    log(`FAILED: ${err?.name}: ${err?.message ?? err}`, 'bad');
+  }
+};
+
+document.getElementById('exec').onclick = async () => {
+  log('--- executeTool ---', 'hdr');
+  const tool = crossTools.find(t => t.name === 'spike_echo');
+  if (!tool) { log('run step 2 first — spike_echo not discovered', 'bad'); return; }
+  const controller = new AbortController();
+  try {
+    const out = await document.modelContext.executeTool(
+      tool,
+      JSON.stringify({ message: 'airlock round-trip' }),
+      { signal: controller.signal }
+    );
+    log(`result: ${typeof out === 'string' ? out : JSON.stringify(out)}`, 'ok');
+    log('SPIKE PASSES: cross-origin discovery + execution round-tripped.', 'ok');
+  } catch (err) {
+    log(`FAILED: ${err?.name}: ${err?.message ?? err}`, 'bad');
+  }
+};
+
+document.modelContext?.addEventListener?.('toolchange', () => log('toolchange fired'));
+</script>
+</body>
+</html>

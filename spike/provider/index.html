@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Airlock spike — provider</title>
+<style>
+  body{font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:16px;
+       background:#0b0d10;color:#d7dee6}
+  h1{font-size:14px;margin:0 0 4px;color:#7fd1b9}
+  .muted{color:#7c8896}
+  #log{white-space:pre-wrap;margin-top:12px;border-top:1px solid #222a33;padding-top:8px}
+  .ok{color:#7fd1b9}.bad{color:#ff8f8f}
+</style>
+</head>
+<body>
+<h1>provider origin</h1>
+<div class="muted" id="origin"></div>
+<div id="log"></div>
+
+<script type="module">
+const CONSUMER = 'https://airlock-spike-consumer.netlify.app';
+const logEl = document.getElementById('log');
+document.getElementById('origin').textContent = location.origin;
+
+function log(msg, cls = '') {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+}
+
+log(`framed: ${window.top !== window.self}`);
+log(`document.modelContext: ${typeof document.modelContext}`);
+
+if (!document.modelContext?.registerTool) {
+  log('registerTool UNAVAILABLE — no WebMCP in this browser', 'bad');
+} else {
+  const tool = {
+    name: 'spike_echo',
+    description: 'Echo a string back, prefixed with the provider origin. Used only to prove cross-origin WebMCP tool discovery and execution works.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Text to echo back verbatim.' }
+      },
+      required: ['message'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: true },
+    execute: async ({ message }, { signal } = {}) => {
+      if (signal?.aborted) throw new Error('aborted before execute');
+      log(`execute() called with: ${JSON.stringify(message)}`, 'ok');
+      return `${location.origin} echoes: ${message}`;
+    }
+  };
+
+  // exposedTo placement is ambiguous in the docs (descriptor vs options).
+  // Try options first, fall back to descriptor, fall back to neither.
+  const attempts = [
+    ['options.exposedTo', () => document.modelContext.registerTool(tool, { exposedTo: [CONSUMER] })],
+    ['descriptor.exposedTo', () => document.modelContext.registerTool({ ...tool, exposedTo: [CONSUMER] })],
+    ['no exposedTo', () => document.modelContext.registerTool(tool)]
+  ];
+
+  for (const [label, fn] of attempts) {
+    try {
+      await fn();
+      log(`registered via ${label}`, 'ok');
+      break;
+    } catch (err) {
+      log(`${label} failed: ${err?.message ?? err}`, 'bad');
+    }
+  }
+
+  try {
+    const own = await document.modelContext.getTools();
+    log(`getTools() sees ${own.length}: ${own.map(t => t.name).join(', ')}`);
+  } catch (err) {
+    log(`getTools() failed: ${err?.message ?? err}`, 'bad');
+  }
+}
+</script>
+</body>
+</html>
