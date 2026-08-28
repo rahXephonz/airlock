@@ -1,0 +1,14 @@
+# Deploys are driven from the CLI with an explicit --site and --dir, one per
+# origin. Recorded here so the four deployments are reproducible from the repo
+# rather than from shell history, which matters because they sit frozen for
+# three weeks after submission (AGENT.md §5).
+#
+#   console   netlify deploy --prod --no-build --filter @airlock/console \
+#               --dir apps/console/dist --site 124e8668-c8f1-42cf-aa47-443efc787f70
+#   vault     netlify deploy --prod --dir apps/vault    --site 1f241ef9-0987-47f5-8bb4-40d69941a55e
+#   dispatch  netlify deploy --prod --dir apps/dispatch --site be40fc82-96e2-4047-adfa-7706861f96e2
+#   bazaar    netlify deploy --prod --dir apps/bazaar   --site a0ec6461-5adf-4ee9-864a-85719bd32599
+
+[build]
+  command = "pnpm --filter @airlock/console build"
+  publish = "apps/console/dist"
