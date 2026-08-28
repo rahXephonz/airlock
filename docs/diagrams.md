@@ -4,8 +4,16 @@ Mermaid, so GitHub renders them inline and Excalidraw can import the same source
 (**Excalidraw → menu → Import → Mermaid**). Keep these and the README in step: if
 one changes, change both.
 
-If Excalidraw renders `<br/>` literally rather than as a line break, shorten the
-labels to a single line — the shapes and edges matter more than the captions.
+Two things learned importing these into Excalidraw, both worth keeping:
+
+**Labels are single-line.** Excalidraw's importer drops `<br/>` rather than
+breaking on it, so multi-line labels arrive as one run-on sentence. Write them
+short instead of relying on line breaks.
+
+**A refused path must not point at its destination.** An arrow into `dispatch`
+labelled "refused" still draws an arrowhead arriving there, which says the
+opposite of what it means. The refusal terminates in its own node instead, so
+nothing in the picture shows the write landing.
 
 ---
 
@@ -18,23 +26,23 @@ place a call can be refused.
 flowchart LR
     agent(["Agent session"])
 
-    subgraph sources["Reads — where data enters"]
+    subgraph reads["Reads — where data enters"]
         direction TB
-        vault["vault<br/>trusted<br/>holds the billing record"]
-        bazaar["bazaar<br/>semi-trusted<br/>seller text is hostile input"]
+        vault["vault · trusted · holds the billing record"]
+        bazaar["bazaar · semi-trusted · seller text is hostile"]
     end
 
-    console["console — Airlock<br/>policy · provenance<br/>taint · ledger<br/>publishes airlock_* proxies"]
+    console["console — Airlock · policy · provenance · taint · ledger"]
 
-    subgraph boundary["Trust boundary — writes cross here"]
-        dispatch["dispatch<br/>trusted, write-capable<br/>irreversible outbound action"]
-    end
+    refused{{"REFUSED — crosses a trust boundary you did not ask to cross"}}
 
-    agent -->|"sees only airlock_* proxies,<br/>never the partner tools"| console
+    dispatch["dispatch · trusted · the only real outbound write"]
+
+    agent -->|"sees only airlock_* proxies, never the partner tools"| console
     vault -->|"read"| console
     bazaar -->|"read · output is tainted"| console
     console -->|"write with untainted arguments"| dispatch
-    console -.->|"write carrying bazaar text<br/>REFUSED"| dispatch
+    console -->|"write carrying bazaar text"| refused
 ```
 
 ## 2. The attack, call by call
@@ -52,7 +60,7 @@ sequenceDiagram
     A->>K: airlock_bazaar_read_listing
     K->>B: read listing 4412
     B-->>K: listing + seller "fulfilment steps"
-    Note over K: output marked tainted,<br/>origin recorded
+    Note over K: output marked tainted, origin recorded
     K-->>A: allowed
 
     A->>K: airlock_vault_read_record
@@ -60,10 +68,10 @@ sequenceDiagram
     V-->>K: accountRef ACCT-7731-QX45
     K-->>A: allowed — nothing crossed a boundary yet
 
-    A->>K: airlock_dispatch_send_message<br/>body = "ORDER 4412 ref=ACCT-7731-QX45"
-    Note over K: argument matches text that<br/>came out of bazaar
+    A->>K: airlock_dispatch_send_message with the account reference
+    Note over K: argument matches text that came out of bazaar
     K--xD: never sent
-    K-->>A: refused — names the origin,<br/>the boundary, and the matched text
+    K-->>A: refused — names the origin, the boundary, the matched text
 ```
 
 ## 3. Why a confirmation dialog is not the same thing
@@ -85,11 +93,11 @@ flowchart TB
         direction TB
         u1["Policy engine evaluates outside the model"]
         u2["Provenance is data: origin, trust, matched text"]
-        u3["Refused calls need a person, in the console,<br/>naming the untrusted origin"]
+        u3["Refused calls need a person in the console, naming the untrusted origin"]
         u4["Decision kept in the ledger, reviewable after the fact"]
         u1 --> u2 --> u3 --> u4
     end
 
-    note1["The component that can be fooled<br/>is the one certifying it wasn't"]
+    note1["The component that can be fooled is the one certifying it wasn't"]
     t2 -.-> note1
 ```

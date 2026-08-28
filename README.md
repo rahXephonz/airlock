@@ -52,23 +52,23 @@ under a framing the attacker wrote.
 flowchart LR
     agent(["Agent session"])
 
-    subgraph sources["Reads — where data enters"]
+    subgraph reads["Reads — where data enters"]
         direction TB
-        vault["vault<br/>trusted<br/>holds the billing record"]
-        bazaar["bazaar<br/>semi-trusted<br/>seller text is hostile input"]
+        vault["vault · trusted · holds the billing record"]
+        bazaar["bazaar · semi-trusted · seller text is hostile"]
     end
 
-    console["console — Airlock<br/>policy · provenance<br/>taint · ledger<br/>publishes airlock_* proxies"]
+    console["console — Airlock · policy · provenance · taint · ledger"]
 
-    subgraph boundary["Trust boundary — writes cross here"]
-        dispatch["dispatch<br/>trusted, write-capable<br/>irreversible outbound action"]
-    end
+    refused{{"REFUSED — crosses a trust boundary you did not ask to cross"}}
 
-    agent -->|"sees only airlock_* proxies,<br/>never the partner tools"| console
+    dispatch["dispatch · trusted · the only real outbound write"]
+
+    agent -->|"sees only airlock_* proxies, never the partner tools"| console
     vault -->|"read"| console
     bazaar -->|"read · output is tainted"| console
     console -->|"write with untainted arguments"| dispatch
-    console -.->|"write carrying bazaar text<br/>REFUSED"| dispatch
+    console -->|"write carrying bazaar text"| refused
 ```
 
 More diagrams, including the attack call by call, in
