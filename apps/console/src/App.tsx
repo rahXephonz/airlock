@@ -189,21 +189,6 @@ export default function App() {
         </p>
       </header>
 
-      {PARTNERS.map((name) => (
-        <iframe
-          key={name}
-          className="partner"
-          src={TRUST[name].url}
-          allow="tools"
-          title={name}
-          // A frame that finishes loading after discovery gave up is the one
-          // case a retry cannot cover, so its arrival triggers another pass.
-          onLoad={() => {
-            if (!federated.current) setReloadKey((k) => k + 1);
-          }}
-        />
-      ))}
-
       <div className="row">
         <div className={`banner ${resolver?.id === 'cross-origin' ? 'ok' : ''}`} style={{ flex: 1 }}>
           {note}
@@ -241,6 +226,33 @@ export default function App() {
           Reads a listing from bazaar, reads the billing record from vault, then tries to send the
           account reference through dispatch — exactly what the seller's notes instruct.
         </span>
+      </div>
+
+      <h2>Partner origins, live</h2>
+      <div className="muted" style={{ marginBottom: 8 }}>
+        Each partner runs here in its own frame with <code>allow="tools"</code>. They are
+        separate instances from the same sites opened in another tab, so their state is
+        changed here. Lock the vault or clear the dispatch channel and the tool
+        disappears from the list below — an invalid tool stops existing rather than
+        existing and failing.
+      </div>
+      <div className="partners">
+        {PARTNERS.map((name) => (
+          <figure key={name}>
+            <figcaption>{name} · {TRUST[name].url.replace('https://', '')}</figcaption>
+            <iframe
+              className="partner"
+              src={TRUST[name].url}
+              allow="tools"
+              title={name}
+              // A frame that finishes loading after discovery gave up is the one
+              // case a retry cannot cover, so its arrival triggers another pass.
+              onLoad={() => {
+                if (!federated.current) setReloadKey((k) => k + 1);
+              }}
+            />
+          </figure>
+        ))}
       </div>
 
       <h2>Discovered tools</h2>
