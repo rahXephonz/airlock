@@ -40,7 +40,7 @@ provenance it observed:
 
 **The claim is not that models get tricked. It is enforcement that does not
 depend on the model's judgement** — which holds whether or not the next model
-resists injection better. In testing, the agent did *not* fall for the
+resists injection better. In testing, the agent did _not_ fall for the
 injection, and Airlock still refused the call, because the user had approved it
 under a framing the attacker wrote.
 
@@ -48,35 +48,40 @@ under a framing the attacker wrote.
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    agent(["Agent session"])
+
+    subgraph sources["Reads — where data enters"]
+        direction TB
+        vault["vault<br/>trusted<br/>holds the billing record"]
+        bazaar["bazaar<br/>semi-trusted<br/>seller text is hostile input"]
+    end
+
+    console["console — Airlock<br/>policy · provenance<br/>taint · ledger<br/>publishes airlock_* proxies"]
+
+    subgraph boundary["Trust boundary — writes cross here"]
+        dispatch["dispatch<br/>trusted, write-capable<br/>irreversible outbound action"]
+    end
+
+    agent -->|"sees only airlock_* proxies,<br/>never the partner tools"| console
+    vault -->|"read"| console
+    bazaar -->|"read · output is tainted"| console
+    console -->|"write with untainted arguments"| dispatch
+    console -.->|"write carrying bazaar text<br/>REFUSED"| dispatch
 ```
-                          TRUST BOUNDARY
-                                │
-  ┌──────────────┐              │
-  │    vault     │──read────┐   │
-  │   trusted    │          │   │
-  │ billing data │          ▼   │
-  └──────────────┘   ┌─────────────┐        ┌──────────────┐
-                     │   console   │──✕─────│   dispatch   │
-  ┌──────────────┐   │   policy    │        │   trusted    │
-  │    bazaar    │──▶│  provenance │        │ the only real│
-  │ semi-trusted │   │ taint·ledger│        │outbound write│
-  │ seller text  │   │  airlock_*  │        └──────────────┘
-  │   is hostile │   └─────────────┘
-  └──────────────┘
-        tainted            ▲
-                           │
-              the agent is handed Airlock's proxies,
-              never the partner tools themselves
-```
+
+More diagrams, including the attack call by call, in
+[`docs/diagrams.md`](docs/diagrams.md).
 
 Four independently deployed origins, one Netlify account:
 
-| origin | role | trust |
-| --- | --- | --- |
-| [`console`](https://airlock-console.netlify.app) | Airlock — discovery, policy, ledger, audit log | self |
-| [`vault`](https://airlock-vault.netlify.app) | Holds the record worth stealing | trusted, read-heavy |
-| [`dispatch`](https://airlock-dispatch.netlify.app) | The only real outbound write | trusted, write-capable |
-| [`bazaar`](https://airlock-bazaar.netlify.app) | Third-party listings; seller text is attacker-controlled | **semi-trusted** |
+| origin                                             | role                                                     | trust                  |
+| -------------------------------------------------- | -------------------------------------------------------- | ---------------------- |
+| [`console`](https://airlock-console.netlify.app)   | Airlock — discovery, policy, ledger, audit log           | self                   |
+| [`vault`](https://airlock-vault.netlify.app)       | Holds the record worth stealing                          | trusted, read-heavy    |
+| [`dispatch`](https://airlock-dispatch.netlify.app) | The only real outbound write                             | trusted, write-capable |
+| [`bazaar`](https://airlock-bazaar.netlify.app)     | Third-party listings; seller text is attacker-controlled | **semi-trusted**       |
 
 The federation is not a second feature — it is why the consent layer is
 non-trivial. Inside one origin you already trust your own code, so gating it
@@ -91,21 +96,21 @@ page to list its tools — it sees six `airlock_*` names and no partner tools.
 
 ## Where the WebMCP work is
 
-| capability | where |
-| --- | --- |
-| Cross-origin discovery, `getTools({ fromOrigins })` | [`crossOriginResolver.ts`](apps/console/src/webmcp/crossOriginResolver.ts) |
-| Mediated proxies — the agent's only path to a partner tool | [`mediation.ts`](apps/console/src/webmcp/mediation.ts) |
-| Tools designed for a model to reason with, not just call | [`policyTools.ts`](apps/console/src/webmcp/policyTools.ts) |
-| Tool surface as a function of state, `AbortSignal` unregistration | [`vault`](apps/vault/index.html), [`dispatch`](apps/dispatch/index.html) |
-| Declarative API on a real form (`toolname`, `toolparamdescription`) | [`dispatch/index.html`](apps/dispatch/index.html) |
-| `signal` passed through so cancellation cancels | every fixture `execute` |
-| Structured errors that teach an agent what to call instead | [`vault/index.html`](apps/vault/index.html), [`bazaar/index.html`](apps/bazaar/index.html) |
-| Schemas written for a model — enums, descriptions, `additionalProperties` | all fixtures |
-| Annotations, incl. `untrustedContentHint` on hostile output | [`bazaar/index.html`](apps/bazaar/index.html) |
-| A foreign `readOnlyHint` recorded as a claim, never used for policy | [`policy.ts`](packages/shared/src/policy.ts) |
-| Taint tracking across origins | [`taint.ts`](packages/shared/src/taint.ts) |
-| Parameter-overreach detection at discovery time | [`policy.ts`](packages/shared/src/policy.ts) |
-| Resolver interface, so the browser-support question is config | [`resolver.ts`](packages/shared/src/resolver.ts) |
+| capability                                                                | where                                                                                      |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Cross-origin discovery, `getTools({ fromOrigins })`                       | [`crossOriginResolver.ts`](apps/console/src/webmcp/crossOriginResolver.ts)                 |
+| Mediated proxies — the agent's only path to a partner tool                | [`mediation.ts`](apps/console/src/webmcp/mediation.ts)                                     |
+| Tools designed for a model to reason with, not just call                  | [`policyTools.ts`](apps/console/src/webmcp/policyTools.ts)                                 |
+| Tool surface as a function of state, `AbortSignal` unregistration         | [`vault`](apps/vault/index.html), [`dispatch`](apps/dispatch/index.html)                   |
+| Declarative API on a real form (`toolname`, `toolparamdescription`)       | [`dispatch/index.html`](apps/dispatch/index.html)                                          |
+| `signal` passed through so cancellation cancels                           | every fixture `execute`                                                                    |
+| Structured errors that teach an agent what to call instead                | [`vault/index.html`](apps/vault/index.html), [`bazaar/index.html`](apps/bazaar/index.html) |
+| Schemas written for a model — enums, descriptions, `additionalProperties` | all fixtures                                                                               |
+| Annotations, incl. `untrustedContentHint` on hostile output               | [`bazaar/index.html`](apps/bazaar/index.html)                                              |
+| A foreign `readOnlyHint` recorded as a claim, never used for policy       | [`policy.ts`](packages/shared/src/policy.ts)                                               |
+| Taint tracking across origins                                             | [`taint.ts`](packages/shared/src/taint.ts)                                                 |
+| Parameter-overreach detection at discovery time                           | [`policy.ts`](packages/shared/src/policy.ts)                                               |
+| Resolver interface, so the browser-support question is config             | [`resolver.ts`](packages/shared/src/resolver.ts)                                           |
 
 Three design decisions worth pointing at:
 
@@ -116,7 +121,7 @@ it has no stated use for — the console flags both at discovery, before anythin
 runs.
 
 **Tools that explain the system to the agent.** `airlock_explain_decision` lets a
-refused agent ask *why* rather than retry. A refusal it cannot interrogate leaves
+refused agent ask _why_ rather than retry. A refusal it cannot interrogate leaves
 it guessing; one it can ask about turns policy into something it can plan around.
 
 **Consent carries provenance, and an agent cannot request it.** A blocked call can
@@ -132,12 +137,12 @@ Four defects were found in one session while building this. **Not one threw an
 exception describing its cause,** and the page looked healthy through all of them.
 Full detail in [`docs/FINDINGS.md`](docs/FINDINGS.md).
 
-| symptom | cause |
-| --- | --- |
-| Discovery hung forever | `getTools({ fromOrigins })` never settles in some builds — it does not reject |
+| symptom                               | cause                                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Discovery hung forever                | `getTools({ fromOrigins })` never settles in some builds — it does not reject                                      |
 | `Failed to convert value to 'object'` | A foreign `inputSchema` arrives as a **JSON string**, not an object. `Object.keys` on it returns character indices |
-| `Duplicate tool name` | A replaced mediator left its proxies registered |
-| `Duplicate tool name`, again | Registering a proxy fires `toolchange`, which requested another publish |
+| `Duplicate tool name`                 | A replaced mediator left its proxies registered                                                                    |
+| `Duplicate tool name`, again          | Registering a proxy fires `toolchange`, which requested another publish                                            |
 
 **A WebMCP consumer cannot rely on `try`/`catch`.** It has to verify results, put
 deadlines on calls, treat `inputSchema` as either a string or an object, compare
@@ -147,13 +152,13 @@ that line existed, the console appeared to work while handing the agent nothing.
 
 Browser support, as measured rather than as documented:
 
-| | Chrome 149+ (flag) | Brave 151 | ChatGPT in-app |
-| --- | --- | --- | --- |
-| `registerTool` (top level) | yes | yes | yes |
-| tools inside an iframe | yes | yes | **no `modelContext` at all** |
-| `getTools({ fromOrigins })` | yes | yes | resolves with 0 foreign, no error |
-| declarative form API | yes | yes | no |
-| `toolchange` | yes | yes | `addEventListener` is `undefined` |
+|                             | Chrome 149+ (flag) | Brave 151 | ChatGPT in-app                    |
+| --------------------------- | ------------------ | --------- | --------------------------------- |
+| `registerTool` (top level)  | yes                | yes       | yes                               |
+| tools inside an iframe      | yes                | yes       | **no `modelContext` at all**      |
+| `getTools({ fromOrigins })` | yes                | yes       | resolves with 0 foreign, no error |
+| declarative form API        | yes                | yes       | no                                |
+| `toolchange`                | yes                | yes       | `addEventListener` is `undefined` |
 
 ---
 
@@ -163,7 +168,7 @@ Browser support, as measured rather than as documented:
 `chrome://flags/#enable-webmcp-testing` set to Enabled.
 
 1. Open **https://airlock-console.netlify.app**
-2. The banner should read *"Discovered 7 tools across 3 partner origins"*
+2. The banner should read _"Discovered 7 tools across 3 partner origins"_
 3. Press **Run the exfiltration attempt** — two steps pass, the third is refused
 4. In the audit log, press **Review and release** on the blocked call to see the
    consent path
