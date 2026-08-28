@@ -50,7 +50,7 @@ under a framing the attacker wrote.
 
 ```mermaid
 flowchart LR
-    agent(["Agent session"])
+    agent(["Agent · sees only airlock_* proxies"])
 
     subgraph reads["Reads — where data enters"]
         direction TB
@@ -64,11 +64,11 @@ flowchart LR
 
     dispatch["dispatch · trusted · the only real outbound write"]
 
-    agent -->|"sees only airlock_* proxies, never the partner tools"| console
-    vault -->|"read"| console
-    bazaar -->|"read · output is tainted"| console
-    console -->|"write with untainted arguments"| dispatch
-    console -->|"write carrying bazaar text"| refused
+    agent --> console
+    vault -->|read| console
+    bazaar -->|"read · tainted"| console
+    console -->|write| dispatch
+    console -->|"write · tainted"| refused
 ```
 
 More diagrams, including the attack call by call, in

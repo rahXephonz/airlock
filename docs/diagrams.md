@@ -10,6 +10,11 @@ Two things learned importing these into Excalidraw, both worth keeping:
 breaking on it, so multi-line labels arrive as one run-on sentence. Write them
 short instead of relying on line breaks.
 
+**Edge labels stay to one to three words.** The importer seats a label by cutting
+the line in half around it, so a long caption leaves an arrow that reads as
+broken — or worse, as though the caption itself were a node. Detail belongs in
+the node text, where it costs nothing.
+
 **A refused path must not point at its destination.** An arrow into `dispatch`
 labelled "refused" still draws an arrowhead arriving there, which says the
 opposite of what it means. The refusal terminates in its own node instead, so
@@ -24,7 +29,7 @@ place a call can be refused.
 
 ```mermaid
 flowchart LR
-    agent(["Agent session"])
+    agent(["Agent · sees only airlock_* proxies"])
 
     subgraph reads["Reads — where data enters"]
         direction TB
@@ -38,11 +43,11 @@ flowchart LR
 
     dispatch["dispatch · trusted · the only real outbound write"]
 
-    agent -->|"sees only airlock_* proxies, never the partner tools"| console
-    vault -->|"read"| console
-    bazaar -->|"read · output is tainted"| console
-    console -->|"write with untainted arguments"| dispatch
-    console -->|"write carrying bazaar text"| refused
+    agent --> console
+    vault -->|read| console
+    bazaar -->|"read · tainted"| console
+    console -->|write| dispatch
+    console -->|"write · tainted"| refused
 ```
 
 ## 2. The attack, call by call
