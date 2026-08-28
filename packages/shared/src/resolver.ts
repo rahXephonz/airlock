@@ -33,7 +33,23 @@ export interface JsonSchema {
 
 /** A tool after Airlock has attached provenance it derived itself. */
 export interface DiscoveredTool {
+  /**
+   * The descriptor exactly as WebMCP handed it over.
+   *
+   * Kept by reference because `executeTool` needs the original object; a copy
+   * is not accepted in its place.
+   */
   readonly raw: RawTool;
+  /**
+   * The tool's input schema, rebuilt as ordinary data.
+   *
+   * A schema that arrives across an origin boundary is not a plain object and
+   * cannot be read back or handed to `registerTool` — attempting it fails with
+   * "Failed to convert value to 'object'", which silently cost every mediated
+   * proxy. Reading it field by field into real data is what makes the schema
+   * usable for both re-registration and inspection.
+   */
+  readonly inputSchema: JsonSchema;
   readonly name: string;
   /** Resolved from `raw.origin`; undefined when the origin is not one we know. */
   readonly profile: OriginProfile | undefined;
@@ -60,11 +76,58 @@ export interface ToolResolver {
   subscribe(onChange: () => void): () => void;
 }
 
+/**
+ * Rebuilds a value from another origin as ordinary data.
+ *
+ * Property access can throw, and the objects themselves are not plain, so each
+ * read is guarded and anything unreadable is dropped rather than allowed to
+ * poison the result.
+ */
+const plainify = (value: unknown, depth = 0): unknown => {
+  if (depth > 8 || value === null) return value;
+
+  const type = typeof value;
+  if (type === 'string' || type === 'number' || type === 'boolean') return value;
+  if (type !== 'object') return undefined;
+
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => plainify(item, depth + 1)).filter((item) => item !== undefined);
+    }
+
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as object)) {
+      try {
+        const converted = plainify((value as Record<string, unknown>)[key], depth + 1);
+        if (converted !== undefined) out[key] = converted;
+      } catch {
+        // A single unreadable property should not lose the rest of the schema.
+      }
+    }
+    return out;
+  } catch {
+    return undefined;
+  }
+};
+
+const EMPTY_SCHEMA: JsonSchema = { type: 'object', properties: {}, additionalProperties: false };
+
+/** Reads a foreign tool's schema into data that can be re-registered. */
+export const normaliseSchema = (schema: unknown): JsonSchema => {
+  const plain = plainify(schema);
+  if (plain && typeof plain === 'object' && !Array.isArray(plain)) {
+    const candidate = plain as JsonSchema;
+    return candidate.properties || candidate.type ? candidate : EMPTY_SCHEMA;
+  }
+  return EMPTY_SCHEMA;
+};
+
 /** Attaches Airlock's own provenance to a tool descriptor from WebMCP. */
 export const toDiscovered = (raw: RawTool): DiscoveredTool => {
   const name: OriginName | undefined = originNameFor(raw.origin);
   return {
     raw,
+    inputSchema: normaliseSchema(raw.inputSchema),
     name: raw.name,
     profile: name ? TRUST[name] : undefined,
     claimsReadOnly: raw.annotations?.readOnlyHint === true,

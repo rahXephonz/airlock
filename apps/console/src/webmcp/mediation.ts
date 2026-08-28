@@ -108,7 +108,7 @@ export class Mediator {
       description:
         `${tool.raw.description ?? tool.name} — provided by ${origin?.name ?? 'an unclassified origin'} (${trust}), mediated by Airlock. ` +
         `Calls that move data across a trust boundary are refused, and writes require the user's confirmation.`,
-      inputSchema: tool.raw.inputSchema ?? { type: 'object', properties: {} },
+      inputSchema: tool.inputSchema,
       // Mirrors what the origin claims so an agent sees the same surface, while
       // the policy engine ignores the claim entirely.
       ...(tool.raw.annotations ? { annotations: tool.raw.annotations } : {}),

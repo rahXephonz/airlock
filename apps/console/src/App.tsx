@@ -155,7 +155,7 @@ export default function App() {
   }, [byName, call]);
 
   const runPrompt = useCallback(async (tool: DiscoveredTool) => {
-    const props = (tool.raw.inputSchema?.properties ?? {}) as Record<string, { enum?: unknown[] }>;
+    const props = (tool.inputSchema.properties ?? {}) as Record<string, { enum?: unknown[] }>;
     const args: Record<string, unknown> = {};
     for (const [key, schema] of Object.entries(props)) {
       const suggestion = schema.enum?.[0];

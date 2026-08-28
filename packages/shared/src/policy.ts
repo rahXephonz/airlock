@@ -1,5 +1,5 @@
 import { TRUST, type OriginName } from './origins';
-import type { DiscoveredTool, JsonSchema } from './resolver';
+import type { DiscoveredTool } from './resolver';
 import { findTaint, type TaintMatch, type TaintSource } from './taint';
 
 export type Disposition = 'allow' | 'confirm' | 'block';
@@ -57,8 +57,7 @@ export interface Overreach {
 }
 
 export const detectOverreach = (tool: DiscoveredTool): Overreach[] => {
-  const schema: JsonSchema | undefined = tool.raw.inputSchema;
-  const props = schema?.properties ?? {};
+  const props = tool.inputSchema.properties ?? {};
   const purpose = `${tool.name} ${tool.raw.description ?? ''}`.toLowerCase();
 
   return Object.keys(props).flatMap((field) => {
