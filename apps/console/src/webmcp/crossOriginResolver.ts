@@ -3,6 +3,33 @@ import { modelContext } from './types';
 
 const PARTNERS = [ORIGINS.vault, ORIGINS.dispatch, ORIGINS.bazaar];
 
+/** How long a discovery call is given before it is treated as unanswered. */
+const DISCOVERY_TIMEOUT_MS = 1500;
+
+/**
+ * Resolves with `fallback` if `work` has not settled in time.
+ *
+ * Needed because an unsupported `getTools({ fromOrigins })` does not
+ * consistently fail. Chrome answers, ChatGPT's in-app browser resolves with no
+ * foreign tools, and at least one Chromium build leaves the promise pending
+ * forever — which stalled discovery on the very first attempt and left the
+ * console reporting that it was still looking. Awaiting a promise that never
+ * settles is indistinguishable from slow, so it is given a deadline.
+ */
+const withDeadline = async <T,>(work: Promise<T>, fallback: T): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), DISCOVERY_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 /**
  * Discovers tools published by the partner origins embedded in this page.
  *
@@ -24,7 +51,7 @@ export class CrossOriginResolver implements ToolResolver {
     const mc = modelContext();
     if (!mc) return [];
 
-    const all = await mc.getTools({ fromOrigins: [...PARTNERS] });
+    const all = await withDeadline(mc.getTools({ fromOrigins: [...PARTNERS] }), []);
     return all
       .filter((t) => typeof t.origin === 'string' && t.origin !== window.location.origin)
       .map(toDiscovered);

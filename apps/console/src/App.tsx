@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ORIGINS, TRUST, type DiscoveredTool, type ToolResolver } from '@airlock/shared';
+import { ORIGINS, TRUST, type DiscoveredTool, type RawTool, type ToolResolver } from '@airlock/shared';
 import { CrossOriginResolver } from './webmcp/crossOriginResolver';
 import { SimulatedResolver } from './webmcp/simulatedResolver';
 import { Mediator } from './webmcp/mediation';
@@ -52,13 +52,22 @@ export default function App() {
     // a browser that has WebMCP but withholds cross-origin tools can be told
     // apart from one that never loaded the partner frames at all.
     const mc = modelContext();
-    const everything = mc ? await mc.getTools().catch(() => []) : [];
+    const deadline = <T,>(work: Promise<T>, fallback: T) =>
+      Promise.race([
+        work.catch(() => fallback),
+        new Promise<T>((r) => setTimeout(() => r(fallback), 1500)),
+      ]);
+    const empty: RawTool[] = [];
+    const everything = mc ? await deadline(mc.getTools(), empty) : empty;
     const withOrigins = mc
-      ? await mc.getTools({ fromOrigins: [ORIGINS.vault, ORIGINS.dispatch, ORIGINS.bazaar] }).catch(() => [])
-      : [];
+      ? await deadline(mc.getTools({ fromOrigins: [ORIGINS.vault, ORIGINS.dispatch, ORIGINS.bazaar] }), empty)
+      : empty;
+    const foreign = withOrigins.filter(
+      (t) => t.origin && t.origin !== window.location.origin,
+    ).length;
     setDiagnostic(
-      `getTools() returned ${everything.length}; getTools({ fromOrigins }) returned ${withOrigins.length}, ` +
-      `of which ${withOrigins.filter((t) => t.origin && t.origin !== window.location.origin).length} were foreign.`,
+      `getTools() returned ${everything.length}; getTools({ fromOrigins }) returned ` +
+      `${withOrigins.length}, of which ${foreign} were foreign.`,
     );
     return new SimulatedResolver();
   }, []);
