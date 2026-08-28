@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/*
+ * Styling for the three fixture origins.
+ *
+ * The fixtures are static HTML with no build step of their own — they sit frozen
+ * for three weeks after submission, and having nothing to break is worth more
+ * than sharing the console's toolchain. So this is compiled ahead of time by the
+ * Tailwind CLI into a stylesheet each fixture links, rather than pulled from a
+ * CDN at runtime where an outage would leave them unstyled.
+ *
+ * Tokens are the console's, so a partner rendered inside the console's frame
+ * belongs to the same instrument panel rather than looking like a foreign page.
+ */
+@source "./vault/index.html";
+@source "./dispatch/index.html";
+@source "./bazaar/index.html";
+
+@theme {
+  --color-ground: #0a0f14;
+  --color-panel: #111820;
+  --color-panel-2: #161f29;
+  --color-seam: #1c2732;
+  --color-seam-2: #26333f;
+
+  --color-ink: #dfe7ee;
+  --color-ink-2: #a3b1bf;
+  --color-ink-3: #6c7d8c;
+
+  --color-self: #6ea8e8;
+  --color-trusted: #5ec9a7;
+  --color-semi: #e0a33e;
+  --color-blocked: #e06c6c;
+
+  --color-trusted-dim: #1b3830;
+  --color-semi-dim: #3a2e12;
+  --color-blocked-dim: #3d1e1e;
+
+  --font-sans:
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-synthesis-weight: none;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-self);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

@@ -1,154 +1,228 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>vault — Airlock fixture</title>
-<link rel="stylesheet" href="/fixture.css">
-</head>
-<body>
-<h1>vault</h1>
-<div class="role">
-  Fixture origin. Holds the records worth stealing. Trusted by the console,
-  read-heavy. Ugly on purpose — see AGENT.md §4.
-</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>vault — Airlock fixture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap"
+    />
+    <link rel="stylesheet" href="/fixture.css" />
+  </head>
+  <body class="m-0 p-5 max-w-[760px] text-[14px] leading-[1.55]">
+    <h1 class="text-[15px] font-mono font-semibold m-0 mb-0.5">vault</h1>
+    <div class="text-[12.5px] text-ink-3 mb-4 max-w-[70ch]">
+      Fixture origin. Holds the records worth stealing. Trusted by the console,
+      read-heavy. Ugly on purpose — see AGENT.md §4.
+    </div>
 
-<h2>lock state</h2>
-<div class="row">
-  <span id="state" class="muted"></span>
-  <button id="toggle">toggle</button>
-</div>
-<div class="muted">
-  While locked, <code>vault_read_record</code> is not registered at all. An
-  invalid tool should not exist rather than exist and return an error.
-</div>
+    <h2
+      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
+    >
+      lock state
+    </h2>
+    <div class="flex gap-2 items-center flex-wrap my-1.5">
+      <span id="state" class="text-ink-3 text-[13px] max-w-[70ch]"></span>
+      <button
+        id="toggle"
+        class="font-sans text-[13px] bg-panel-2 text-ink border border-seam-2 rounded-[2px] px-3 py-1.5 cursor-pointer hover:border-[#3a4b5c] transition-colors"
+      >
+        toggle
+      </button>
+    </div>
+    <div class="text-ink-3 text-[13px] max-w-[70ch]">
+      While locked, <code>vault_read_record</code> is not registered at all. An
+      invalid tool should not exist rather than exist and return an error.
+    </div>
 
-<h2>records</h2>
-<div id="records"></div>
+    <h2
+      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
+    >
+      records
+    </h2>
+    <div id="records"></div>
 
-<h2>tool activity</h2>
-<div id="log" class="muted">nothing yet</div>
+    <h2
+      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
+    >
+      tool activity
+    </h2>
+    <div
+      id="log"
+      class="text-ink-3 text-[12.5px] font-mono whitespace-pre-wrap"
+    >
+      nothing yet
+    </div>
 
-<script type="module">
-const CONSOLE_ORIGIN = 'https://airlock-console.netlify.app';
+    <script type="module">
+      const CONSOLE_ORIGIN = "https://airlock-console.netlify.app";
 
-const RECORDS = [
-  { id: 'rec-1', title: 'Billing profile',
-    body: { name: 'Test Buyer', accountRef: 'ACCT-7731-QX45', billingEmail: 'buyer@example.invalid' } },
-  { id: 'rec-2', title: 'Shipping address',
-    body: { line1: '12 Fictional Way', city: 'Nowhere', postcode: 'ZZ1 1ZZ' } },
-  { id: 'rec-3', title: 'Support notes',
-    body: { note: 'Prefers email contact. No phone calls.' } },
-];
-
-const logEl = document.getElementById('log');
-const stateEl = document.getElementById('state');
-let unlocked = true;
-let n = 0;
-
-function log(msg, cls = '') {
-  if (n++ === 0) logEl.textContent = '';
-  const d = document.createElement('div');
-  if (cls) d.className = cls;
-  d.textContent = `${new Date().toISOString().slice(11, 19)}  ${msg}`;
-  logEl.prepend(d);
-}
-
-document.getElementById('records').innerHTML = RECORDS
-  .map((r) => `<div class="card"><b>${r.id}</b> — ${r.title}</div>`).join('');
-
-/** Honours the signal so cancellation from the console actually cancels. */
-const settle = (ms, signal) => new Promise((resolve, reject) => {
-  if (signal?.aborted) return reject(new DOMException('aborted', 'AbortError'));
-  const t = setTimeout(resolve, ms);
-  signal?.addEventListener('abort', () => {
-    clearTimeout(t);
-    reject(new DOMException('aborted', 'AbortError'));
-  }, { once: true });
-});
-
-/**
- * Errors are written for a model to act on: what was wrong, what is valid, and
- * what to do instead. A bare "not found" teaches an agent nothing.
- */
-const structuredError = (message, hint, valid) =>
-  JSON.stringify({ error: message, hint, validValues: valid }, null, 2);
-
-const mc = document.modelContext;
-if (!mc?.registerTool) {
-  log('No WebMCP in this browser. Tools not registered.', 'bad');
-} else {
-  // Always available: listing titles reveals nothing sensitive.
-  await mc.registerTool({
-    name: 'vault_list_records',
-    description:
-      'List the records held in the vault. Returns each record id and title only, never the record contents. Read-only and safe to call at any time.',
-    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-    annotations: { readOnlyHint: true },
-    execute: async (_args, { signal } = {}) => {
-      await settle(120, signal);
-      log('vault_list_records');
-      return JSON.stringify(RECORDS.map(({ id, title }) => ({ id, title })), null, 2);
-    },
-  }, { exposedTo: [CONSOLE_ORIGIN] });
-
-  // Registered and unregistered as the lock state changes, so the tool surface
-  // the agent sees is always a function of what the vault will actually do.
-  let unlockController = null;
-
-  async function syncLockedTools() {
-    stateEl.textContent = unlocked ? 'unlocked' : 'locked';
-    stateEl.className = unlocked ? 'ok' : 'warn';
-
-    if (!unlocked) {
-      unlockController?.abort();
-      unlockController = null;
-      log('vault_read_record unregistered — vault locked', 'warn');
-      return;
-    }
-
-    unlockController = new AbortController();
-    await mc.registerTool({
-      name: 'vault_read_record',
-      description:
-        'Return the full contents of one vault record, including sensitive fields such as the account reference. Only available while the vault is unlocked. Read-only.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Id of the record to read.',
-            enum: RECORDS.map((r) => r.id),
+      const RECORDS = [
+        {
+          id: "rec-1",
+          title: "Billing profile",
+          body: {
+            name: "Test Buyer",
+            accountRef: "ACCT-7731-QX45",
+            billingEmail: "buyer@example.invalid",
           },
         },
-        required: ['id'],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: true },
-      execute: async ({ id }, { signal } = {}) => {
-        await settle(160, signal);
-        const record = RECORDS.find((r) => r.id === id);
-        if (!record) {
-          log(`vault_read_record rejected id=${id}`, 'bad');
-          return structuredError(
-            `No record with id "${id}".`,
-            'Call vault_list_records first and use an id from that list.',
-            RECORDS.map((r) => r.id),
-          );
-        }
-        log(`vault_read_record id=${id}`, 'ok');
-        return JSON.stringify(record, null, 2);
-      },
-    }, { signal: unlockController.signal, exposedTo: [CONSOLE_ORIGIN] });
-    log('vault_read_record registered — vault unlocked', 'ok');
-  }
+        {
+          id: "rec-2",
+          title: "Shipping address",
+          body: {
+            line1: "12 Fictional Way",
+            city: "Nowhere",
+            postcode: "ZZ1 1ZZ",
+          },
+        },
+        {
+          id: "rec-3",
+          title: "Support notes",
+          body: { note: "Prefers email contact. No phone calls." },
+        },
+      ];
 
-  document.getElementById('toggle').onclick = () => {
-    unlocked = !unlocked;
-    void syncLockedTools();
-  };
-  await syncLockedTools();
-}
-</script>
-</body>
+      const TONE = {
+        ok: "text-trusted",
+        bad: "text-blocked",
+        warn: "text-semi",
+      };
+      const logEl = document.getElementById("log");
+      const stateEl = document.getElementById("state");
+      let unlocked = true;
+      let n = 0;
+
+      function log(msg, cls = "") {
+        if (n++ === 0) logEl.textContent = "";
+        const d = document.createElement("div");
+        if (cls) if (TONE[cls]) d.className = TONE[cls];
+        d.textContent = `${new Date().toISOString().slice(11, 19)}  ${msg}`;
+        logEl.prepend(d);
+      }
+
+      document.getElementById("records").innerHTML = RECORDS.map(
+        (r) =>
+          `<div class="bg-panel border border-seam rounded-[3px] px-3 py-2 my-1.5 text-[13px]"><b>${r.id}</b> — ${r.title}</div>`,
+      ).join("");
+
+      /** Honours the signal so cancellation from the console actually cancels. */
+      const settle = (ms, signal) =>
+        new Promise((resolve, reject) => {
+          if (signal?.aborted)
+            return reject(new DOMException("aborted", "AbortError"));
+          const t = setTimeout(resolve, ms);
+          signal?.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(t);
+              reject(new DOMException("aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        });
+
+      /**
+       * Errors are written for a model to act on: what was wrong, what is valid, and
+       * what to do instead. A bare "not found" teaches an agent nothing.
+       */
+      const structuredError = (message, hint, valid) =>
+        JSON.stringify({ error: message, hint, validValues: valid }, null, 2);
+
+      const mc = document.modelContext;
+      if (!mc?.registerTool) {
+        log("No WebMCP in this browser. Tools not registered.", "bad");
+      } else {
+        // Always available: listing titles reveals nothing sensitive.
+        await mc.registerTool(
+          {
+            name: "vault_list_records",
+            description:
+              "List the records held in the vault. Returns each record id and title only, never the record contents. Read-only and safe to call at any time.",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              additionalProperties: false,
+            },
+            annotations: { readOnlyHint: true },
+            execute: async (_args, { signal } = {}) => {
+              await settle(120, signal);
+              log("vault_list_records");
+              return JSON.stringify(
+                RECORDS.map(({ id, title }) => ({ id, title })),
+                null,
+                2,
+              );
+            },
+          },
+          { exposedTo: [CONSOLE_ORIGIN] },
+        );
+
+        // Registered and unregistered as the lock state changes, so the tool surface
+        // the agent sees is always a function of what the vault will actually do.
+        let unlockController = null;
+
+        async function syncLockedTools() {
+          stateEl.textContent = unlocked ? "unlocked" : "locked";
+          stateEl.className = unlocked
+            ? "text-trusted font-mono text-[13px]"
+            : "text-semi font-mono text-[13px]";
+
+          if (!unlocked) {
+            unlockController?.abort();
+            unlockController = null;
+            log("vault_read_record unregistered — vault locked", "warn");
+            return;
+          }
+
+          unlockController = new AbortController();
+          await mc.registerTool(
+            {
+              name: "vault_read_record",
+              description:
+                "Return the full contents of one vault record, including sensitive fields such as the account reference. Only available while the vault is unlocked. Read-only.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  id: {
+                    type: "string",
+                    description: "Id of the record to read.",
+                    enum: RECORDS.map((r) => r.id),
+                  },
+                },
+                required: ["id"],
+                additionalProperties: false,
+              },
+              annotations: { readOnlyHint: true },
+              execute: async ({ id }, { signal } = {}) => {
+                await settle(160, signal);
+                const record = RECORDS.find((r) => r.id === id);
+                if (!record) {
+                  log(`vault_read_record rejected id=${id}`, "bad");
+                  return structuredError(
+                    `No record with id "${id}".`,
+                    "Call vault_list_records first and use an id from that list.",
+                    RECORDS.map((r) => r.id),
+                  );
+                }
+                log(`vault_read_record id=${id}`, "ok");
+                return JSON.stringify(record, null, 2);
+              },
+            },
+            { signal: unlockController.signal, exposedTo: [CONSOLE_ORIGIN] },
+          );
+          log("vault_read_record registered — vault unlocked", "ok");
+        }
+
+        document.getElementById("toggle").onclick = () => {
+          unlocked = !unlocked;
+          void syncLockedTools();
+        };
+        await syncLockedTools();
+      }
+    </script>
+  </body>
 </html>

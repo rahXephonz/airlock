@@ -3,6 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+./scripts/build-fixtures.sh
 pnpm --filter @airlock/console build
 
 # --filter is required on every deploy, including the static fixtures that are
