@@ -24,6 +24,8 @@
 <button id="probe">1. probe capabilities</button>
 <button id="cross">2. getTools({ fromOrigins })</button>
 <button id="exec">3. executeTool (cross-origin)</button>
+<button id="bare">4. bare getTools() — agent's view</button>
+<button id="revoke">5. abort controller — does unregister work</button>
 
 <h2>provider in iframe allow="tools"</h2>
 <iframe id="frame" src="https://airlock-spike-provider.netlify.app" allow="tools"></iframe>
@@ -99,6 +101,45 @@ document.getElementById('exec').onclick = async () => {
     );
     log(`result: ${typeof out === 'string' ? out : JSON.stringify(out)}`, 'ok');
     log('SPIKE PASSES: cross-origin discovery + execution round-tripped.', 'ok');
+  } catch (err) {
+    log(`FAILED: ${err?.name}: ${err?.message ?? err}`, 'bad');
+  }
+};
+
+
+document.getElementById('bare').onclick = async () => {
+  log('--- bare getTools() (approximates the agent view of this page) ---', 'hdr');
+  try {
+    const tools = await document.modelContext.getTools();
+    log(`returned ${tools.length} tool(s)`);
+    for (const t of tools) log(`  ${t.name}  origin=${t.origin ?? '(none)'}`);
+    const foreign = tools.filter(t => t.origin && t.origin !== location.origin);
+    if (foreign.length) {
+      log(`LEAK: ${foreign.length} iframe tool(s) visible without fromOrigins — proxy mediation is bypassable.`, 'bad');
+    } else {
+      log('CONTAINED: iframe tools are NOT auto-exposed. Proxy mediation holds.', 'ok');
+    }
+  } catch (err) {
+    log(`FAILED: ${err?.name}: ${err?.message ?? err}`, 'bad');
+  }
+};
+
+document.getElementById('revoke').onclick = async () => {
+  log('--- AbortController unregister ---', 'hdr');
+  const ctrl = new AbortController();
+  try {
+    await document.modelContext.registerTool({
+      name: 'spike_temp',
+      description: 'Temporary tool used to verify that aborting the registration signal removes it from the tool list.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: true },
+      execute: async () => 'temp'
+    }, { signal: ctrl.signal });
+    const before = (await document.modelContext.getTools()).some(t => t.name === 'spike_temp');
+    ctrl.abort();
+    await new Promise(r => setTimeout(r, 50));
+    const after = (await document.modelContext.getTools()).some(t => t.name === 'spike_temp');
+    log(`present before abort: ${before}, after abort: ${after}`, before && !after ? 'ok' : 'bad');
   } catch (err) {
     log(`FAILED: ${err?.name}: ${err?.message ?? err}`, 'bad');
   }
