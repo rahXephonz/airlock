@@ -44,6 +44,20 @@ resists injection better. In testing, the agent did _not_ fall for the
 injection, and Airlock still refused the call, because the user had approved it
 under a framing the attacker wrote.
 
+# Why we built this?
+
+The capability firewall for the agentic web.
+
+AI agents can now operate websites through WebMCP.
+But a banking site, marketplace listing, and messaging
+service should not all receive the same level of trust.
+
+Airlock discovers tools across origins and republishes
+them behind one policy-enforced WebMCP surface.
+
+It tracks provenance, blocks unsafe cross-origin
+information flows, and makes every decision auditable.
+
 ---
 
 ## Architecture
