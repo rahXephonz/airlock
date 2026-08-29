@@ -151,9 +151,38 @@ supports more of WebMCP than either browser tested during the spike.
 | --- | --- | --- | --- |
 | `getTools({ fromOrigins })` | answers | resolves, 0 foreign, no error | answers |
 | tools inside an iframe | yes | no `modelContext` at all | yes |
-| declarative form API | yes | no | yes |
+| declarative form API | yes | no | yes, but **not discoverable cross-origin** |
 | `toolchange` across origins | untested | no API | does not reach the embedder |
 | `inputSchema` across origins | untested | — | **arrives as a JSON string** |
+
+### A declaratively registered tool does not cross the boundary
+
+Measured 2026-08-29 in Brave 151, with the console and all three partners
+deployed. `dispatch` registers `dispatch_compose_message` through the
+declarative form API, and the browser's own registry confirms it: the fixture
+reports "Declarative tool dispatch_compose_message is registered by this
+browser."
+
+It does not appear in the console's federated surface. `getTools({ fromOrigins })`
+returned seven foreign tools — two from `vault`, two from `dispatch`, three from
+`bazaar` — and `dispatch_compose_message` is not among them. Every one of the
+seven was registered imperatively.
+
+So the two APIs are not interchangeable across an origin boundary. A tool
+declared on a form is available to an agent attached to that page and invisible
+to an embedder discovering it from outside. Nothing says so: the call succeeds,
+returns tools, and simply omits one.
+
+Two consequences worth keeping:
+
+- AGENT.md §3 asks for the declarative API on at least one real form. That is
+  satisfiable, and it was satisfied, but it buys nothing on the federated path.
+  Any capability the console must mediate has to be registered imperatively as
+  well, or it will not exist as far as the console is concerned.
+- Counting is again the only detection. The console asked for tools from three
+  origins and got seven; there is no signal distinguishing "that is all of them"
+  from "one was withheld because of how it was registered". The same shape as
+  the in-app browser's silent zero, one tool instead of all of them.
 
 ### Everything fails silently
 
