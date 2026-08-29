@@ -1,4 +1,4 @@
-import { TRUST, type OriginName } from "@airlock/shared";
+import { TRUST, originNameFor, type OriginName } from "@airlock/shared";
 import { modelContext } from "./types";
 import type { Ledger } from "../state/ledger";
 
@@ -92,7 +92,11 @@ export function registerPolicyTools(
           return JSON.stringify(
             matches.slice(0, 5).map((e) => ({
               tool: e.toolName,
-              origin: e.origin,
+              // The short name, matching how origins are named everywhere else
+              // in this payload. Reporting a URL here and a name under
+              // valuesTracedTo left the same key meaning two different things.
+              origin: originNameFor(e.origin) ?? e.origin,
+              originUrl: e.origin,
               outcome: e.outcome,
               treatedAsWrite: e.decision.treatedAsWrite,
               reasons: e.decision.reasons.map((r) => r.detail),
