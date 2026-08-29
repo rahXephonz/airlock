@@ -487,8 +487,13 @@ export default function App() {
 
       <Section
         label="Audit log"
-        lede="Every mediated call and the reasoning behind it, kept as data rather than as prose in a transcript."
+        lede="Every mediated call and the reasoning behind it, kept as data rather than as prose in a transcript. It survives a reload — an audit log that a refresh empties is prose in a transcript by another name."
       >
+        {entries.length > 0 && (
+          <div className="flex justify-end mb-3">
+            <Button onClick={ledger.clear}>Clear the log</Button>
+          </div>
+        )}
         <LedgerView entries={entries} onOverride={setReviewing} />
       </Section>
 
