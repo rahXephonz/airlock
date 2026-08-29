@@ -14,8 +14,13 @@ export function ConsentDialog({ request }: { request: ConsentRequest }) {
   const origin = tool.profile?.name ?? 'an unclassified origin';
 
   return (
-    <div className="fixed inset-0 z-20 grid place-items-center p-5 bg-[#040709e0]">
-      <div className="bg-panel border border-seam-2 rounded-[3px] p-5 w-full max-w-[640px]">
+    <div className="fixed inset-0 z-20 bg-[#040709e0] overflow-y-auto overscroll-contain
+                    p-4 sm:p-5 flex justify-center items-start sm:items-center">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-panel border border-seam-2 rounded-[3px] p-4 sm:p-5 w-full max-w-[640px] my-auto"
+      >
         <p className={LABEL}>Confirm a write</p>
         <h3 className="text-[18px] font-semibold mt-1.5 mb-1">
           {tool.name} on {origin}

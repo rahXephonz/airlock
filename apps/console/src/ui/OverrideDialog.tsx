@@ -30,8 +30,13 @@ export function OverrideDialog({
   const armed = typed.trim().toLowerCase() === required.toLowerCase();
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center p-5 bg-[#040709e8]">
-      <div className="bg-panel border border-blocked-dim rounded-[3px] p-5 w-full max-w-[640px]">
+    <div className="fixed inset-0 z-30 bg-[#040709e8] overflow-y-auto overscroll-contain
+                    p-4 sm:p-5 flex justify-center items-start sm:items-center">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-panel border border-blocked-dim rounded-[3px] p-4 sm:p-5 w-full max-w-[640px] my-auto"
+      >
         <p className={LABEL}>Release a blocked call</p>
         <h3 className="text-[18px] font-semibold mt-1.5 mb-1">
           {entry.toolName} on {entry.origin.replace('https://', '')}
