@@ -8,54 +8,51 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="/fixture.css" />
   </head>
-  <body class="m-0 p-5 max-w-[760px] text-[14px] leading-[1.55]">
-    <h1 class="text-[15px] font-mono font-semibold m-0 mb-0.5">bazaar</h1>
-    <div class="text-[12.5px] text-ink-3 mb-4 max-w-[70ch]">
-      Fixture origin. Third-party marketplace. Listing text is written by
-      sellers, so everything this origin returns is attacker-controlled input.
-      Semi-trusted.
-    </div>
-
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      seller notes on listing 4412
-    </h2>
-    <div class="flex gap-2 items-center flex-wrap my-1.5">
-      <select
-        id="payload"
-        class="font-mono text-[13px] bg-panel text-ink border border-seam-2 rounded-xs py-1.5 pl-2 pr-3 max-w-full"
+  <body class="m-0 p-6 max-w-[720px] text-[13.5px] leading-[1.6]">
+    <header class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="grid place-items-center size-7 rounded-sm bg-panel-2 ring-1 ring-seam-2 shrink-0"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 text-semi" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        </span>
+        <span class="flex flex-col leading-tight">
+          <span class="font-mono text-[13.5px] font-semibold">bazaar</span>
+          <span class="text-[11px] text-ink-4">Airlock fixture origin</span>
+        </span>
+      </div>
+      <span
+        class="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11.5px] font-medium bg-semi-dim text-semi"
+        >semi-trusted</span
       >
+    </header>
+
+    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">Third-party marketplace. Listing text is written by sellers, so everything this origin returns is attacker-controlled input.</p>
+
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Seller notes on listing 4412</h2>
+      <select id="payload" class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full cursor-pointer">
         <option value="clean">clean — ordinary listing</option>
         <option value="procedural" selected>
           procedural — fulfilment steps that exfiltrate
         </option>
-        <option value="imperative">
-          imperative — "ignore previous instructions"
-        </option>
+        <option value="imperative">imperative — "ignore previous instructions"</option>
       </select>
-    </div>
-    <div class="text-ink-3 text-[13px] max-w-[70ch]">
-      Switches what <code>bazaar_read_listing</code> returns. The imperative
-      payload is kept only to show that it is the weaker attack; the procedural
-      one is what the demo uses.
-    </div>
+      <p class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]">
+        Switches what <code>bazaar_read_listing</code> returns. The imperative payload is
+        kept only to show that it is the weaker attack; the procedural one is what the demo
+        uses.
+      </p>
+    </section>
 
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      tool activity
-    </h2>
-    <div
-      id="log"
-      class="text-ink-3 text-[12.5px] font-mono whitespace-pre-wrap"
-    >
-      nothing yet
-    </div>
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Tool activity</h2>
+      <div id="log" class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap">nothing yet</div>
+    </section>
 
     <script type="module">
       const CONSOLE_ORIGIN = "https://airlock-console.netlify.app";

@@ -8,88 +8,78 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="/fixture.css" />
   </head>
-  <body class="m-0 p-5 max-w-[760px] text-[14px] leading-[1.55]">
-    <h1 class="text-[15px] font-mono font-semibold m-0 mb-0.5">dispatch</h1>
-    <div class="text-[12.5px] text-ink-3 mb-4 max-w-[70ch]">
-      Fixture origin. The only place a real outbound action happens. Trusted by
-      the console, and write-capable — which is what makes every call here
-      matter.
-    </div>
-
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      channel
-    </h2>
-    <div class="flex gap-2 items-center flex-wrap my-1.5">
-      <select
-        id="channel"
-        class="font-mono text-[13px] bg-panel text-ink border border-seam-2 rounded-xs py-1.5 pl-2 pr-3 max-w-full"
+  <body class="m-0 p-6 max-w-[720px] text-[13.5px] leading-[1.6]">
+    <header class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="grid place-items-center size-7 rounded-sm bg-panel-2 ring-1 ring-seam-2 shrink-0"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 text-trusted" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+        </span>
+        <span class="flex flex-col leading-tight">
+          <span class="font-mono text-[13.5px] font-semibold">dispatch</span>
+          <span class="text-[11px] text-ink-4">Airlock fixture origin</span>
+        </span>
+      </div>
+      <span
+        class="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11.5px] font-medium bg-trusted-dim text-trusted"
+        >trusted · write</span
       >
-        <option value="">— none selected —</option>
-        <option value="orders" selected>orders (public)</option>
-        <option value="support">support (private)</option>
-      </select>
-      <span id="state" class="text-ink-3 text-[13px] max-w-[70ch]"></span>
-    </div>
-    <div class="text-ink-3 text-[13px] max-w-[70ch]">
-      With no channel selected there is nothing to send to, so
-      <code>dispatch_send_message</code> is not registered.
-    </div>
+    </header>
 
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      compose (declarative WebMCP tool)
-    </h2>
-    <form
-      id="compose"
-      class="bg-panel border border-seam rounded-[3px] p-3"
-      toolname="dispatch_compose_message"
-      tooldescription="Fill in and send a message on the currently selected dispatch channel. Sending is a real outbound action."
-    >
-      <div class="flex gap-2 items-center flex-wrap my-1.5">
+    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">The only place a real outbound action happens. Trusted by the console and write-capable — which is what makes every call here matter.</p>
+
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Channel</h2>
+      <div class="flex gap-2.5 items-center flex-wrap">
+        <select id="channel" class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full cursor-pointer">
+          <option value="">— none selected —</option>
+          <option value="orders" selected>orders (public)</option>
+          <option value="support">support (private)</option>
+        </select>
+        <span id="state" class="font-mono text-[12.5px]"></span>
+      </div>
+      <p class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]">
+        With no channel selected there is nothing to send to, so
+        <code>dispatch_send_message</code> is not registered.
+      </p>
+    </section>
+
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Compose</h2>
+      <form
+        id="compose"
+        class="flex gap-2.5 items-center flex-wrap"
+        toolname="dispatch_compose_message"
+        tooldescription="Fill in and send a message on the currently selected dispatch channel. Sending is a real outbound action."
+      >
         <input
           name="body"
-          class="font-mono text-[13px] bg-panel text-ink border border-seam-2 rounded-[2px] px-2 py-1.5 max-w-full min-w-[260px]"
+          class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full min-w-[220px]"
           placeholder="message body"
           size="42"
           toolparamdescription="The exact message text to send."
         />
-        <button
-          type="submit"
-          class="font-sans text-[13px] bg-panel-2 text-ink border border-seam-2 rounded-[2px] px-3 py-1.5 cursor-pointer hover:border-[#3a4b5c] transition-colors"
-        >
-          send
-        </button>
-      </div>
-    </form>
-    <div class="text-ink-3 text-[13px]" id="declState">
-      Declarative API. Present in Chrome; absent in ChatGPT's in-app browser.
-    </div>
+        <button type="submit" class="h-8 px-3 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 text-[13px] font-medium cursor-pointer transition-colors hover:bg-panel-3">Send</button>
+      </form>
+      <p id="declState" class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]">
+        Declarative WebMCP tool. Present in Chrome; absent in ChatGPT's in-app browser.
+      </p>
+    </section>
 
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      sent
-    </h2>
-    <div id="sent" class="text-ink-3 text-[13px]">nothing sent</div>
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Sent</h2>
+      <div id="sent" class="text-[12.5px] text-ink-4 grid gap-1.5">nothing sent</div>
+    </section>
 
-    <h2
-      class="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-ink-3 mt-5 mb-1.5 border-t border-seam pt-2.5"
-    >
-      tool activity
-    </h2>
-    <div
-      id="log"
-      class="text-ink-3 text-[12.5px] font-mono whitespace-pre-wrap"
-    >
-      nothing yet
-    </div>
+    <section class="mt-7 pt-5 border-t border-seam">
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Tool activity</h2>
+      <div id="log" class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap">nothing yet</div>
+    </section>
 
     <script type="module">
       const CONSOLE_ORIGIN = "https://airlock-console.netlify.app";
@@ -118,7 +108,7 @@
         if (sentCount++ === 0) sentEl.textContent = "";
         const d = document.createElement("div");
         d.className =
-          "bg-panel border border-seam rounded-[3px] px-3 py-2 my-1.5 text-[13px] font-mono";
+          "bg-panel-2 rounded-sm px-3 py-2 text-[12.5px] font-mono text-ink-2";
         d.textContent = `[${channel}] ${body}`;
         sentEl.prepend(d);
       }
@@ -192,8 +182,8 @@
             ? `sending to ${channel}`
             : "no channel";
           stateEl.className = channel
-            ? "text-trusted font-mono text-[13px]"
-            : "text-semi font-mono text-[13px]";
+            ? "text-trusted font-mono text-[12.5px]"
+            : "text-semi font-mono text-[12.5px]";
 
           sendController?.abort();
           sendController = null;
@@ -257,8 +247,8 @@
           ? "Declarative tool dispatch_compose_message is registered by this browser."
           : "This browser did not register the declarative form tool.";
         document.getElementById("declState").className = declPresent
-          ? "text-trusted text-[13px]"
-          : "text-semi text-[13px]";
+          ? "text-[12.5px] text-trusted mt-2.5 mb-0 max-w-[68ch]"
+          : "text-[12.5px] text-semi mt-2.5 mb-0 max-w-[68ch]";
       }
 
       document.getElementById("compose").addEventListener("submit", (e) => {
