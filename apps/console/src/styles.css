@@ -1,41 +1,53 @@
 @import "tailwindcss";
 
 /*
- * Airlock — a border-control instrument panel.
+ * Airlock — a security control plane.
  *
- * The page commits to one visual world rather than following the viewer's
- * theme: this is a security console, and a console reads as an instrument.
+ * The palette is neutral almost everywhere. Three colours carry meaning —
+ * emerald for trusted, amber for tainted, red for refused — and nothing else in
+ * the interface is allowed to use them, because scarcity is what makes a red
+ * mark read as a security event rather than as decoration.
  *
- * One structural device carries the design: the boundary seam. It divides
- * trusted from untrusted in the diagram, forms the left rail of every scenario
- * step, and turns red at the step where policy refuses. Everything else stays
- * quiet.
+ * Surfaces are separated by luminance and hairlines rather than by boxes. A
+ * border is spent on a focus ring, a selected row or the blocked boundary; a
+ * rectangle drawn around every concept is what makes an interface look
+ * generated rather than composed.
  */
 @theme {
-  /* Neutrals carry a cyan bias — chosen, not a default mid-grey. */
-  --color-ground: #0a0f14;
-  --color-panel: #111820;
-  --color-panel-2: #161f29;
-  --color-seam: #1c2732;
-  --color-seam-2: #26333f;
+  /* Neutrals. Zinc, warmed by nothing: this is instrument grey. */
+  --color-ground: #09090b;
+  --color-surface: #111113;
+  --color-surface-2: #17171a;
+  --color-surface-3: #1d1d21;
 
-  --color-ink: #dfe7ee;
-  --color-ink-2: #a3b1bf;
-  --color-ink-3: #6c7d8c;
+  /* Hairlines. Low-contrast by default; only interaction earns more. */
+  --color-line: #ffffff12;
+  --color-line-2: #ffffff1f;
+  --color-line-3: #ffffff33;
 
-  /* Semantic, in the vocabulary of customs stamps. Kept apart from the accent. */
-  --color-self: #6ea8e8;
-  --color-trusted: #5ec9a7;
-  --color-semi: #e0a33e;
-  --color-blocked: #e06c6c;
+  --color-fg: #fafafa;
+  --color-fg-2: #a1a1aa;
+  --color-fg-3: #71717a;
+  --color-fg-4: #52525b;
 
-  --color-self-dim: #26405c;
-  --color-trusted-dim: #1b3830;
-  --color-semi-dim: #3a2e12;
-  --color-blocked-dim: #3d1e1e;
+  /* Semantic. Used on text, dots, rails and tints — never as a filled panel. */
+  --color-trusted: #34d399;
+  --color-trusted-tint: #10b98118;
+  --color-semi: #fbbf24;
+  --color-semi-tint: #f59e0b18;
+  --color-blocked: #f87171;
+  --color-blocked-strong: #ef4444;
+  --color-blocked-tint: #ef444414;
+  /* Airlock itself. Cool, quiet, and reserved for the engine. */
+  --color-system: #a5b4fc;
+  --color-system-tint: #818cf814;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  --font-sans: "Inter Tight", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -46,19 +58,61 @@
   body {
     /* Painted explicitly so nothing is inherited from the host ground. */
     background-color: var(--color-ground);
-    color: var(--color-ink);
+    color: var(--color-fg);
     font-family: var(--font-sans);
+    font-feature-settings: "cv05" 1, "ss03" 1;
     font-synthesis-weight: none;
     -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.006em;
   }
-  h1, h2, h3 { text-wrap: balance; }
-  code, pre { font-variant-ligatures: none; }
+  h1, h2, h3 {
+    text-wrap: balance;
+    letter-spacing: -0.018em;
+  }
+  code, pre, .tabular {
+    font-variant-ligatures: none;
+    letter-spacing: 0;
+  }
   :focus-visible {
-    outline: 2px solid var(--color-self);
+    outline: 2px solid var(--color-system);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
+  }
+  ::selection {
+    background: #ffffff1f;
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+}
+
+@layer utilities {
+  /*
+   * The one piece of motion in the product: a node the scenario is currently
+   * calling. It marks a real in-flight call, and stops the moment the call
+   * settles — motion here is state, not decoration.
+   */
+  @keyframes airlock-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  .animate-pulse-soft {
+    animation: airlock-pulse 1.4s ease-in-out infinite;
+  }
+
+  /* Sheets arrive from the edge they live on, fast enough not to be waited on. */
+  @keyframes airlock-slide-in {
+    from { transform: translateX(12px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes airlock-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-sheet {
+    animation: airlock-slide-in 160ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .animate-scrim {
+    animation: airlock-fade-in 160ms ease-out;
   }
 }

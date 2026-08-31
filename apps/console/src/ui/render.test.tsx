@@ -122,13 +122,19 @@ describe('the overview surfaces', () => {
     const blocked = entries.find((e) => e.outcome === 'blocked')!;
 
     const html = renderToStaticMarkup(
-      <DecisionSummary entry={blocked} onInspect={() => {}} onReplay={() => {}} />,
+      <DecisionSummary
+        entry={blocked}
+        entries={entries}
+        onInspect={() => {}}
+        onReplay={() => {}}
+      />,
     );
 
-    expect(html).toContain('BLOCKED');
-    expect(html).toContain('Capability invoked');
-    expect(html).toContain('NO');
-    expect(html).toContain('dispatch never received the call.');
+    expect(html).toContain('Blocked');
+    expect(html).toContain('Executed');
+    // The provenance path is spelled out on the card: bazaar, then the target.
+    expect(html).toContain('bazaar');
+    expect(html).toContain('dispatch');
   });
 });
 
@@ -165,7 +171,8 @@ describe('activity', () => {
 
     expect(html).toContain('bazaar_read_listing');
     expect(html).toContain('dispatch_send_message');
-    expect(html).toContain('BLOCK');
+    expect(html).toContain('Blocked');
+    expect(html).toContain('Allowed');
     expect(html).toContain('cross-origin-exfiltration');
   });
 });
@@ -177,7 +184,8 @@ describe('policies', () => {
 
     expect(html).toContain('Cross-trust-boundary write');
     expect(html).toContain('Untainted write');
-    expect(html).toContain('BLOCK');
+    expect(html).toContain('Block');
+    expect(html).toContain('Consent');
   });
 });
 
@@ -198,6 +206,7 @@ describe('the WebMCP view', () => {
         federated={false}
         publishedCount={0}
         rereading={false}
+        lastRead={undefined}
         onReread={() => {}}
         diagnostic=""
       />,
@@ -225,13 +234,18 @@ describe('the WebMCP view', () => {
         federated
         publishedCount={7}
         rereading={false}
+        lastRead={Date.UTC(2026, 7, 31, 16, 36, 4)}
         onReread={() => {}}
         diagnostic=""
       />,
     );
 
     expect(html).toContain('Native cross-origin');
+    // The read is timestamped, so pressing the button reports something even
+    // when the measurement comes back identical.
+    expect(html).toContain('read 16:36:04');
     expect(html).toContain('1 capability across 1 foreign origin');
-    expect(html).toContain('airlock_vault_read_record');
+    // The names themselves live behind the registry sheet, not on the page.
+    expect(html).toContain('View 1 registered tool');
   });
 });

@@ -1,32 +1,30 @@
 import { useCallback, useState } from 'react';
+import { Check, CircleX, Loader2, Play, ScanSearch } from 'lucide-react';
 import type { DiscoveredTool } from '@airlock/shared';
 import type { LedgerEntry } from '../state/ledger';
-import { Button, Dot, LABEL } from './primitives';
+import { Button } from './primitives';
 
 /**
  * The three calls the seller's notes ask for, in order.
  *
  * The third is only interesting because the first two happened: the taint it
  * carries exists because of step one, and the value it carries came from step
- * two. Running them in sequence is the demonstration.
+ * two.
  */
 const STEPS = [
   {
     toolName: 'bazaar_read_listing',
-    title: 'Read the listing',
-    origin: 'bazaar',
+    title: 'Bazaar listing read',
     args: { id: '4412' } as Record<string, unknown>,
   },
   {
     toolName: 'vault_read_record',
-    title: 'Read the billing record',
-    origin: 'vault',
+    title: 'Vault record accessed',
     args: { id: 'rec-1' } as Record<string, unknown>,
   },
   {
     toolName: 'dispatch_send_message',
-    title: 'Publish the account reference',
-    origin: 'dispatch',
+    title: 'Dispatch write attempted',
     args: { body: 'ORDER 4412 ref=ACCT-7731-QX45' } as Record<string, unknown>,
   },
 ] as const;
@@ -42,6 +40,23 @@ const stateOf = (entry: LedgerEntry | undefined): StepState =>
         ? 'failed'
         : 'allowed';
 
+function StepMark({ state }: { state: StepState }) {
+  const glyph =
+    state === 'running' ? (
+      <Loader2 className="size-3.5 text-system animate-spin" aria-hidden />
+    ) : state === 'blocked' ? (
+      <CircleX className="size-3.5 text-blocked" aria-hidden />
+    ) : state === 'allowed' ? (
+      <Check className="size-3.5 text-trusted" aria-hidden />
+    ) : state === 'failed' ? (
+      <CircleX className="size-3.5 text-semi" aria-hidden />
+    ) : (
+      <span aria-hidden className="size-[6px] rounded-full ring-1 ring-line-3" />
+    );
+
+  return <span className="grid place-items-center size-4 shrink-0">{glyph}</span>;
+}
+
 const WORD: Record<StepState, string> = {
   idle: 'not run',
   running: 'running',
@@ -53,10 +68,9 @@ const WORD: Record<StepState, string> = {
 /**
  * Runs the adversarial scenario through the real mediator.
  *
- * Every row's state is read back from the ledger entry the call produced, so
- * the sequence cannot report a block that policy did not make. There is no
- * scripted outcome here — lock the vault and step two fails instead, which is
- * exactly what should happen.
+ * Each row's state is read back from the ledger entry the call produced, so the
+ * sequence cannot report a block that policy did not make. Lock the vault and
+ * step two fails instead — which is what should happen.
  */
 export function AttackRunner({
   tools,
@@ -73,6 +87,8 @@ export function AttackRunner({
 }) {
   const [running, setRunning] = useState(false);
   const [reached, setReached] = useState(-1);
+  /** Measured round trip of the refused call, not a decorative number. */
+  const [decidedIn, setDecidedIn] = useState<number | null>(null);
 
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
   const ready = STEPS.every((s) => byName[s.toolName]);
@@ -83,99 +99,86 @@ export function AttackRunner({
   const run = useCallback(async () => {
     setRunning(true);
     setReached(-1);
+    setDecidedIn(null);
     for (let i = 0; i < STEPS.length; i++) {
       const step = STEPS[i]!;
       const tool = byName[step.toolName];
       if (!tool) break;
       onActive(step.toolName);
+      const started = performance.now();
       await onCall(tool, step.args);
+      if (i === STEPS.length - 1) setDecidedIn(Math.round(performance.now() - started));
       setReached(i);
     }
     onActive(undefined);
     setRunning(false);
   }, [byName, onCall, onActive]);
 
-  const refused = reached >= 0
-    ? entries.find((e) => e.toolName === 'dispatch_send_message' && e.outcome === 'blocked')
-    : undefined;
+  const refused =
+    reached >= 0
+      ? entries.find((e) => e.toolName === 'dispatch_send_message' && e.outcome === 'blocked')
+      : undefined;
 
   return (
     <div>
-      <div className="flex gap-3 items-center flex-wrap">
-        <Button tone="danger" onClick={() => void run()} disabled={!ready || running}>
-          {running ? 'Running…' : 'Run attack demo'}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <p className="text-[13px] text-fg-3 max-w-[46ch] m-0 leading-[1.6]">
+          A seller listing instructs the agent to publish the buyer&apos;s account reference to a
+          public channel.
+        </p>
+        <Button
+          variant="primary"
+          size="lg"
+          icon={Play}
+          onClick={() => void run()}
+          disabled={!ready || running}
+        >
+          {running ? 'Running' : 'Run attack demo'}
         </Button>
-        {!ready && (
-          <span className="text-[12.5px] text-ink-3">
-            Waiting for all three capabilities. Unlock the vault in Origins.
-          </span>
-        )}
       </div>
 
-      <ol className="list-none p-0 mt-4 m-0 grid gap-px bg-seam border border-seam rounded-[3px] overflow-hidden">
+      {!ready && (
+        <p className="text-[12.5px] text-fg-4 mt-3 m-0">
+          Waiting for all three capabilities. Unlock the vault in Origins.
+        </p>
+      )}
+
+      <ol className="list-none p-0 m-0 mt-5 grid gap-3">
         {STEPS.map((step, i) => {
           const entry = entryFor(step.toolName, i);
           const state: StepState = running && i === reached + 1 ? 'running' : stateOf(entry);
 
           return (
-            <li
-              key={step.toolName}
-              className={`grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-center px-3.5 py-2.5 ${
-                state === 'blocked' ? 'bg-[#150f11]' : 'bg-panel'
-              }`}
-            >
-              <div className="flex gap-2.5 items-center min-w-0">
-                <span className="font-mono text-[11px] text-ink-3 tabular-nums w-3">{i + 1}</span>
-                <span
-                  className={`text-[13px] ${state === 'idle' ? 'text-ink-3' : 'text-ink'} truncate`}
-                >
-                  {step.title}
-                </span>
-                <code className="font-mono text-[11.5px] text-ink-3 truncate">{step.toolName}</code>
-              </div>
-
-              <span className="flex gap-2 items-center">
-                {state === 'blocked' ? (
-                  <span className="text-blocked font-mono text-[12px]" aria-hidden>
-                    ✕
-                  </span>
-                ) : (
-                  <Dot
-                    tone={
-                      state === 'allowed' ? 'trusted' : state === 'running' ? 'self' : 'neutral'
-                    }
-                    hollow={state === 'idle'}
-                  />
-                )}
-                <span
-                  className={`font-mono text-[11.5px] ${
-                    state === 'blocked'
-                      ? 'text-blocked'
-                      : state === 'allowed'
-                        ? 'text-trusted'
-                        : 'text-ink-3'
-                  }`}
-                >
-                  {WORD[state]}
-                </span>
+            <li key={step.toolName} className="flex items-center gap-2.5">
+              <StepMark state={state} />
+              <span
+                className={`text-[13px] ${state === 'idle' ? 'text-fg-4' : state === 'blocked' ? 'text-blocked' : 'text-fg-2'}`}
+              >
+                {step.title}
               </span>
+              <span className="ml-auto font-mono text-[11.5px] text-fg-4">{WORD[state]}</span>
             </li>
           );
         })}
       </ol>
 
       {refused && (
-        <div className="mt-4 border border-blocked-dim border-l-[3px] border-l-blocked bg-[#150f11] rounded-[3px] px-4 py-3.5">
-          <p className={`${LABEL} text-blocked`}>Blocked by Airlock</p>
-          <p className="text-[14px] mt-2 max-w-[64ch]">
-            Untrusted provenance from <span className="font-mono text-semi">bazaar</span> attempted
-            to cross into a trusted write on{' '}
-            <span className="font-mono text-trusted">dispatch</span>.
+        <div className="mt-5 pt-4 border-t border-line">
+          <p className="text-[14px] font-medium text-fg m-0">
+            dispatch never received the call.
           </p>
-          <p className="text-[14px] font-medium mt-1.5">dispatch never received the call.</p>
-          <div className="mt-3.5">
-            <Button onClick={() => onInspect(refused)}>Inspect decision</Button>
-          </div>
+          <p className="text-[12.5px] text-fg-3 mt-1.5 m-0">
+            Cross-trust-boundary flow refused by the policy engine
+            {decidedIn !== null && <> in {decidedIn} ms</>}.
+          </p>
+          <Button
+            className="mt-3.5"
+            size="sm"
+            icon={ScanSearch}
+            onClick={() => onInspect(refused)}
+          >
+            Inspect decision
+          </Button>
         </div>
       )}
     </div>

@@ -69,6 +69,8 @@ export default function App() {
   const [note, setNote] = useState("Checking what this browser supports…");
   const [capabilities, setCapabilities] = useState<Capabilities>(EMPTY_CAPABILITIES);
   const [rereading, setRereading] = useState(false);
+  /** When the registry was last read back, so the button has something to report. */
+  const [lastRead, setLastRead] = useState<number | undefined>(undefined);
   const [publishedCount, setPublishedCount] = useState(0);
   const mediator = useRef<Mediator | null>(null);
   /** Stops late-loading frames from restarting discovery that already succeeded. */
@@ -98,6 +100,8 @@ export default function App() {
   /** Frames that failed to load, so an unreachable partner reads as unavailable. */
   const [unreachable, setUnreachable] = useState<ReadonlySet<string>>(new Set());
   const [loaded, setLoaded] = useState<ReadonlySet<string>>(new Set());
+  /** Whether the partner fixtures are expanded on the Origins view. */
+  const [fixturesOpen, setFixturesOpen] = useState(false);
   const [offline] = useState(offlineFromQuery);
 
   // The third argument is the server snapshot. Nothing here is server-rendered
@@ -106,11 +110,24 @@ export default function App() {
   const entries = useSyncExternalStore(ledger.subscribe, ledger.getSnapshot, ledger.getSnapshot);
   const pending = useSyncExternalStore(consent.subscribe, consent.getSnapshot, consent.getSnapshot);
 
-  /** Re-reads the browser's own tool registry, for the WebMCP view. */
+  /**
+   * Re-reads the browser's own tool registry, for the WebMCP view.
+   *
+   * The measurement usually comes back in a few milliseconds and usually comes
+   * back identical, which made the button look broken: nothing on the page moved
+   * and nothing said it had been read. So the reading state is held long enough
+   * to be seen, and the time of the read is reported whether or not the answer
+   * changed — "the same, just now" is the useful answer here.
+   */
   const reread = useCallback(async () => {
     setRereading(true);
     try {
-      setCapabilities(await probe());
+      const [measured] = await Promise.all([
+        probe(),
+        new Promise((resolve) => setTimeout(resolve, 400)),
+      ]);
+      setCapabilities(measured);
+      setLastRead(Date.now());
     } finally {
       setRereading(false);
     }
@@ -220,7 +237,10 @@ export default function App() {
         // Read the browser's registry back, so what the WebMCP view reports is
         // the browser's account of what it holds rather than this page's.
         const after = await probe();
-        if (!cancelled) setCapabilities(after);
+        if (!cancelled) {
+          setCapabilities(after);
+          setLastRead(Date.now());
+        }
       };
 
       await refresh();
@@ -329,7 +349,7 @@ export default function App() {
         frames={
           <PartnerFrames
             partners={PARTNERS}
-            visible={view === "origins"}
+            visible={view === "origins" && fixturesOpen}
             offline={offline}
             onLoad={(name) => {
               setLoaded((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
@@ -350,7 +370,10 @@ export default function App() {
             tools={tools}
             entries={entries}
             activeTool={activeTool}
+            origins={partnerOrigins}
+            transport={!settled ? "Starting" : federatedNow ? "Native" : "Fallback"}
             degraded={federatedNow ? undefined : note}
+            onOpenActivity={() => go("activity")}
             onCall={call}
             onActive={setActiveTool}
             onInspect={(entry) => setInspecting({ entry, replay: false })}
@@ -376,7 +399,15 @@ export default function App() {
 
         {view === "policies" && <Policies entries={entries} />}
 
-        {view === "origins" && <Origins tools={tools} unreachable={offlineNames} onCall={call} />}
+        {view === "origins" && (
+          <Origins
+            tools={tools}
+            unreachable={offlineNames}
+            fixturesOpen={fixturesOpen}
+            onToggleFixtures={() => setFixturesOpen((v) => !v)}
+            onCall={call}
+          />
+        )}
 
         {view === "webmcp" && (
           <WebMCP
@@ -384,6 +415,7 @@ export default function App() {
             federated={!!federatedNow}
             publishedCount={publishedCount}
             rereading={rereading}
+            lastRead={lastRead}
             onReread={() => void reread()}
             diagnostic={diagnostic}
           />

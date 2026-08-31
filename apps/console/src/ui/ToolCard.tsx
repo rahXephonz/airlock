@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { AlertTriangle, Play } from 'lucide-react';
 import { detectOverreach, type DiscoveredTool, type JsonSchema } from '@airlock/shared';
-import { Button, LABEL, PANEL, Tag, toneForTrust } from './primitives';
+import { Badge, Button, SectionTitle } from './primitives';
 
 const WRITE_VERB =
   /^(publish|send|post|order|create|update|delete|write|pay|transfer|share|submit|remove|set)/;
@@ -26,28 +27,29 @@ const suggestionFor = (f: Field): string =>
   f.schema.enum?.[0] !== undefined ? String(f.schema.enum[0]) : '';
 
 const INPUT =
-  'w-full bg-[#0b1218] border border-seam-2 rounded-[2px] px-2.5 py-[7px] ' +
-  'font-mono text-[13px] text-ink outline-none focus:border-self';
+  'w-full h-8 bg-surface-2 rounded-sm ring-1 ring-inset ring-line-2 px-2.5 ' +
+  'font-mono text-[12.5px] text-fg outline-none focus:ring-system';
 
 /**
- * One discovered tool, with what its origin claims and what Airlock concluded
- * shown side by side.
+ * One discovered capability, with what its origin claims and what Airlock
+ * concluded shown side by side.
  *
- * Keeping the two visually distinct is the point: a reader should be able to see
- * that "read-only" is something the origin said, not something anyone verified.
+ * Keeping the two visually distinct is the point: a reader should see that
+ * "read-only" is something the origin said, not something anyone verified.
  *
- * Arguments are collected in the card rather than through `window.prompt`. A
- * native prompt blocks the whole page while it is open, is styled by the browser
- * rather than by us, and is suppressed outright in some embedded webviews — one
- * of which is the browser this demo most needs to survive.
+ * Arguments are collected here rather than through `window.prompt`, which
+ * blocks the page, is styled by the browser, and is suppressed outright in some
+ * embedded webviews — one of which is the browser this demo most needs.
  */
-export function ToolCard({ tool, onRun }: {
+export function ToolCard({
+  tool,
+  onRun,
+}: {
   tool: DiscoveredTool;
   onRun: (tool: DiscoveredTool, args: Record<string, unknown>) => void;
 }) {
   const overreach = detectOverreach(tool);
-  const contested =
-    tool.claimsReadOnly && WRITE_VERB.test(tool.name.replace(/^[a-z]+_/, ''));
+  const contested = tool.claimsReadOnly && WRITE_VERB.test(tool.name.replace(/^[a-z]+_/, ''));
 
   const fields = useMemo(() => fieldsOf(tool), [tool]);
   const [open, setOpen] = useState(false);
@@ -68,56 +70,61 @@ export function ToolCard({ tool, onRun }: {
   };
 
   return (
-    <div className={`${PANEL} px-4 py-3.5`}>
-      <div className="grid grid-cols-[1fr_auto] gap-3.5 items-start">
+    <div className="bg-surface-2 rounded-sm px-3.5 py-3">
+      <div className="flex gap-3 items-start justify-between">
         <div className="min-w-0">
-          <span className="font-mono text-sm font-medium break-all">{tool.name}</span>
-          <p className="text-ink-2 text-[13.5px] mt-1 max-w-[74ch]">{tool.raw.description}</p>
-
-          <div className="flex gap-1.5 flex-wrap mt-2.5">
-            <Tag tone={toneForTrust(tool.profile?.trust)}>
-              {tool.profile?.name ?? 'unclassified'} · {tool.profile?.trust ?? 'unknown'}
-            </Tag>
-            {tool.claimsReadOnly && (
-              <Tag tone={contested ? 'bad' : 'neutral'}>
-                {contested ? 'claims read-only — contested' : 'claims read-only'}
-              </Tag>
-            )}
-            {tool.claimsUntrustedContent && <Tag tone="semi">emits untrusted content</Tag>}
-            {overreach.map((o) => (
-              <Tag key={o.field} tone="bad">overreach: {o.field}</Tag>
-            ))}
-          </div>
+          <p className="font-mono text-[12.5px] text-fg m-0 break-all">{tool.name}</p>
+          <p className="text-[12.5px] text-fg-3 mt-1 m-0 leading-[1.55]">{tool.raw.description}</p>
         </div>
-
         <Button
+          size="sm"
+          icon={Play}
           onClick={() => (fields.length === 0 ? onRun(tool, {}) : setOpen((v) => !v))}
           aria-expanded={fields.length === 0 ? undefined : open}
         >
-          {fields.length === 0 ? 'Call' : open ? 'Cancel' : 'Call…'}
+          {fields.length === 0 ? 'Call' : open ? 'Cancel' : 'Call'}
         </Button>
       </div>
 
+      {(tool.claimsReadOnly || tool.claimsUntrustedContent || overreach.length > 0) && (
+        <div className="flex gap-1.5 flex-wrap mt-2.5">
+          {tool.claimsReadOnly && (
+            <Badge
+              tone={contested ? 'blocked' : 'neutral'}
+              icon={contested ? AlertTriangle : undefined}
+            >
+              {contested ? 'claims read-only — contested' : 'claims read-only'}
+            </Badge>
+          )}
+          {tool.claimsUntrustedContent && <Badge tone="semi">emits untrusted content</Badge>}
+          {overreach.map((o) => (
+            <Badge key={o.field} tone="blocked" icon={AlertTriangle}>
+              overreach: {o.field}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {open && fields.length > 0 && (
         <form
-          className="mt-4 pt-3.5 border-t border-seam grid gap-3"
+          className="mt-3.5 pt-3.5 border-t border-line grid gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
         >
-          <p className={LABEL}>Arguments</p>
+          <SectionTitle>Arguments</SectionTitle>
           {fields.map((f) => (
             <label key={f.name} className="grid gap-1.5">
-              <span className="font-mono text-[12.5px] text-ink">
+              <span className="font-mono text-[12px] text-fg-2">
                 {f.name}
                 {f.required && <span className="text-semi"> *</span>}
                 {overreached.has(f.name) && (
-                  <span className="text-blocked"> — not justified by this tool's purpose</span>
+                  <span className="text-blocked font-sans"> — not justified by its purpose</span>
                 )}
               </span>
               {f.schema.description && (
-                <span className="text-ink-3 text-[12.5px]">{f.schema.description}</span>
+                <span className="text-[12px] text-fg-4">{f.schema.description}</span>
               )}
               {f.schema.enum ? (
                 <select
@@ -143,14 +150,12 @@ export function ToolCard({ tool, onRun }: {
               )}
             </label>
           ))}
-          <div className="flex gap-2.5 flex-wrap">
-            <Button type="submit" tone="primary" disabled={missing}>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Button type="submit" size="sm" variant="primary" disabled={missing}>
               Run through Airlock
             </Button>
             {missing && (
-              <span className="text-ink-3 text-[13px] self-center">
-                Fill the required arguments first.
-              </span>
+              <span className="text-[12px] text-fg-4">Fill the required arguments first.</span>
             )}
           </div>
         </form>

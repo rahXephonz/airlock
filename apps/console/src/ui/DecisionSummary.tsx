@@ -1,79 +1,100 @@
+import { CircleX, Check, RotateCcw, ScanSearch, ShieldAlert } from 'lucide-react';
 import { originNameFor } from '@airlock/shared';
 import type { LedgerEntry } from '../state/ledger';
-import { Button, LABEL, Tag, toneForDisposition } from './primitives';
+import { chainFor } from '../state/provenance';
+import { ProvenancePath } from './ProvenanceChain';
+import { Button, SectionTitle, Separator } from './primitives';
 
 const clock = (at: number) => new Date(at).toISOString().slice(11, 19);
 
-const WORD = { block: 'BLOCKED', confirm: 'CONFIRMED', allow: 'ALLOWED' } as const;
+const HEADLINE = {
+  block: 'Blocked',
+  confirm: 'Confirmed',
+  allow: 'Allowed',
+} as const;
 
 /**
- * The most recent decision, at the weight it deserves.
+ * The most recent decision.
  *
  * A blocked call is the single most important thing this product has to say, so
- * it is a first-class surface rather than a row in a log: what was attempted,
- * where the provenance came from, and — the line the whole thesis rests on —
- * whether the capability was invoked at all.
+ * it gets one surface of its own — but not a red box. The refusal is carried by
+ * a mark, a thin accent and one sentence; outlining the whole card in red would
+ * be loud without being clear, and would leave nothing louder for the thing
+ * that actually matters, which is that the capability never ran.
  */
 export function DecisionSummary({
   entry,
+  entries,
   onInspect,
   onReplay,
 }: {
   entry: LedgerEntry;
+  entries: readonly LedgerEntry[];
   onInspect: () => void;
   onReplay: () => void;
 }) {
   const blocked = entry.outcome === 'blocked';
-  const disposition = entry.decision.disposition;
   const target = originNameFor(entry.origin) ?? entry.origin;
   const source = entry.decision.taint[0]?.source;
-  const rule = entry.decision.reasons[0]?.code ?? '—';
+  const chain = chainFor(entry, entries);
 
   const facts: [string, string][] = [
-    ['Source', source?.origin ?? 'no tracked provenance'],
+    ['Source', source?.origin ?? '—'],
     ['Target', target],
-    ['Policy', rule],
-    ['Provenance', source?.toolName ?? '—'],
-    ['Capability invoked', blocked ? 'NO' : 'yes'],
+    ['Policy', entry.decision.reasons[0]?.code ?? '—'],
+    ['Executed', blocked ? 'No' : 'Yes'],
   ];
 
   return (
     <section
-      className={[
-        'border rounded-[3px] bg-panel',
-        blocked ? 'border-blocked-dim border-l-[3px] border-l-blocked' : 'border-seam',
-      ].join(' ')}
+      className={`bg-surface rounded-md ring-1 ring-line overflow-hidden ${
+        blocked ? 'border-l-2 border-l-blocked' : ''
+      }`}
     >
-      <div className="flex gap-3 items-center justify-between px-4 py-2.5 border-b border-seam">
-        <h3 className={LABEL}>Latest decision</h3>
-        <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">{clock(entry.at)}</span>
-      </div>
+      <div className="px-5 py-3.5">
+        <SectionTitle
+          action={<span className="font-mono text-[11.5px] text-fg-4">{clock(entry.at)}</span>}
+        >
+          Latest decision
+        </SectionTitle>
 
-      <div className="p-4">
-        <div className="flex gap-2.5 items-center flex-wrap">
-          {blocked && (
-            <span className="text-blocked font-mono text-[15px] leading-none" aria-hidden>
-              ✕
+        <div className="flex items-center gap-2.5 mt-3">
+          {blocked ? (
+            <span className="grid place-items-center size-6 rounded-sm bg-blocked-tint">
+              <CircleX className="size-3.5 text-blocked" aria-hidden />
+            </span>
+          ) : (
+            <span className="grid place-items-center size-6 rounded-sm bg-trusted-tint">
+              <Check className="size-3.5 text-trusted" aria-hidden />
             </span>
           )}
           <span
-            className={`font-mono text-[15px] font-semibold tracking-[0.06em] ${
-              blocked ? 'text-blocked' : 'text-ink'
-            }`}
+            className={`text-[15px] font-semibold ${blocked ? 'text-blocked' : 'text-fg'}`}
           >
-            {WORD[disposition]}
+            {HEADLINE[entry.decision.disposition]}
           </span>
-          <Tag tone={toneForDisposition(disposition)}>{entry.outcome}</Tag>
-          <code className="font-mono text-[13px] text-ink-2 break-all">{entry.toolName}</code>
+          <span className="font-mono text-[12.5px] text-fg-2 truncate">{entry.toolName}</span>
         </div>
 
-        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(140px,100%),1fr))] gap-x-5 gap-y-3 mt-4 m-0">
+        <div className="mt-2.5">
+          <ProvenancePath chain={chain} />
+        </div>
+
+        <p className="text-[13px] text-fg-3 mt-2.5 max-w-[64ch] leading-[1.55] m-0">
+          {entry.decision.reasons[0]?.detail}
+        </p>
+      </div>
+
+      <Separator />
+
+      <div className="px-5 py-3 flex items-center justify-between gap-6 flex-wrap">
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(92px,1fr))] gap-x-8 gap-y-2 m-0 flex-1 min-w-[260px]">
           {facts.map(([k, v]) => (
             <div key={k}>
-              <dt className={LABEL}>{k}</dt>
+              <dt className="text-[11.5px] text-fg-4">{k}</dt>
               <dd
-                className={`m-0 font-mono text-[12.5px] mt-1 break-words ${
-                  k === 'Capability invoked' && blocked ? 'text-blocked' : 'text-ink'
+                className={`m-0 text-[12.5px] mt-0.5 ${
+                  k === 'Executed' && blocked ? 'text-blocked font-medium' : 'text-fg-2'
                 }`}
               >
                 {v}
@@ -82,21 +103,29 @@ export function DecisionSummary({
           ))}
         </dl>
 
-        {blocked && (
-          <p className="text-[13.5px] mt-4">
-            <span className="text-ink">{target} never received the call.</span>{' '}
-            <span className="text-ink-3">
-              Refused by the policy engine before the mediated proxy reached the origin.
-            </span>
-          </p>
-        )}
-
-        <div className="flex gap-2 mt-4 flex-wrap">
-          <Button onClick={onInspect}>Inspect decision</Button>
-          <Button tone="primary" onClick={onReplay}>
-            Replay policy
+        <div className="flex gap-2">
+          <Button size="sm" icon={ScanSearch} onClick={onInspect}>
+            Inspect
+          </Button>
+          <Button size="sm" icon={RotateCcw} onClick={onReplay}>
+            Replay
           </Button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/** Shown before anything has run, so the surface is never simply blank. */
+export function NoDecisionYet() {
+  return (
+    <section className="bg-surface rounded-md ring-1 ring-line px-5 py-3.5">
+      <SectionTitle>Latest decision</SectionTitle>
+      <div className="flex items-center gap-3 mt-3">
+        <ShieldAlert className="size-4 text-fg-4" aria-hidden />
+        <p className="text-[13px] text-fg-3 m-0">
+          No calls mediated yet. Run the attack demo, or call a capability from Origins.
+        </p>
       </div>
     </section>
   );

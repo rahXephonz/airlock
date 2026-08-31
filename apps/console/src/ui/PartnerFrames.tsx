@@ -1,5 +1,4 @@
 import { TRUST } from '@airlock/shared';
-import { LABEL } from './primitives';
 
 const DEAD_ORIGIN = 'https://airlock-this-origin-does-not-exist.netlify.app';
 
@@ -14,8 +13,8 @@ const DEAD_ORIGIN = 'https://airlock-this-origin-does-not-exist.netlify.app';
  *
  * So navigation moves them off-screen rather than removing them. They keep
  * running, keep their state, and keep publishing. `visibility: hidden` rather
- * than `display: none`, so nothing inside a frame nobody can see is still in the
- * tab order.
+ * than `display: none`, so nothing inside a frame nobody can see is still in
+ * the tab order.
  */
 export function PartnerFrames({
   partners,
@@ -35,24 +34,21 @@ export function PartnerFrames({
       aria-hidden={!visible}
       className={
         visible
-          ? 'mt-8'
+          ? 'mt-4'
           : 'invisible absolute -left-[10000px] top-0 w-[960px] pointer-events-none'
       }
     >
-      {visible && (
-        <p className={`${LABEL} mb-3`}>Partner origins, live — change their state here</p>
-      )}
-      <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))]">
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))]">
         {partners.map((name) => (
           <figure key={name} className="m-0">
-            <figcaption className="font-mono text-[11px] text-ink-3 mb-1.5 break-all">
+            <figcaption className="font-mono text-[11px] text-fg-4 mb-2 break-all">
               {name} ·{' '}
               {offline.has(name)
                 ? 'offline (demonstrating degradation)'
                 : TRUST[name].url.replace('https://', '')}
             </figcaption>
             <iframe
-              className="w-full h-64 border border-seam rounded-[3px] bg-panel"
+              className="w-full h-[320px] rounded-md ring-1 ring-line bg-surface"
               src={offline.has(name) ? DEAD_ORIGIN : TRUST[name].url}
               allow="tools"
               title={name}

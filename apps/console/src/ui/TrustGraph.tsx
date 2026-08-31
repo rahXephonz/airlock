@@ -1,148 +1,223 @@
 import type { FlowNode, FlowStatus } from '../state/trustflow';
-import { Dot, Tag, type Tone } from './primitives';
 
 /**
- * The live trust flow.
+ * The trust flow.
  *
- * Five fixed nodes, because the architecture is fixed: two partner origins, the
- * agent that can reach both, the policy engine every call goes through, and the
- * one capability that writes. What changes is their state, and the state comes
- * from the ledger — so the picture is a reading of what happened rather than an
- * illustration of what usually happens.
+ * Two origins read into the agent; the agent tries to write through Airlock to
+ * a third. That shape is the product, so it is drawn as a shape rather than
+ * stacked into a list. The boundary is a real line down the middle of the
+ * picture, and the refusal happens on it.
  *
- * Drawn in CSS rather than SVG: text that has to stay legible at any width is
- * text the browser should be allowed to lay out, and a diagram that clips on a
- * narrow screen would be worse than no diagram.
+ * State comes from the ledger by way of `flowFor` — an idle graph means nothing
+ * has run, and the cross on the boundary appears because the policy engine
+ * refused, not because an animation finished.
+ *
+ * One SVG, no library. Text is placed against fixed columns because SVG will
+ * not wrap it, and the whole thing scales with the viewport.
  */
 
-const TRUST_TONE: Record<string, Tone> = {
-  trusted: 'trusted',
-  'semi-trusted': 'semi',
-  self: 'self',
-  agent: 'self',
-  engine: 'self',
+const FILL: Record<FlowStatus, string> = {
+  idle: 'fill-fg-4',
+  active: 'fill-system',
+  done: 'fill-trusted',
+  tainted: 'fill-semi',
+  blocked: 'fill-blocked',
+  never: 'fill-none',
 };
 
-const STATUS_TONE: Record<FlowStatus, Tone> = {
-  idle: 'neutral',
-  active: 'self',
-  done: 'trusted',
-  tainted: 'semi',
-  blocked: 'bad',
-  never: 'bad',
+const NAME: Record<FlowStatus, string> = {
+  idle: 'fill-fg-3',
+  active: 'fill-fg',
+  done: 'fill-fg',
+  tainted: 'fill-fg',
+  blocked: 'fill-fg',
+  never: 'fill-fg-3',
 };
 
-const NODE_RING: Record<FlowStatus, string> = {
-  idle: 'border-seam',
-  active: 'border-self-dim',
-  done: 'border-trusted-dim',
-  tainted: 'border-semi-dim',
-  blocked: 'border-blocked',
-  never: 'border-blocked-dim border-dashed',
+const DETAIL: Record<FlowStatus, string> = {
+  idle: 'fill-fg-4',
+  active: 'fill-system',
+  done: 'fill-fg-3',
+  tainted: 'fill-semi',
+  blocked: 'fill-blocked',
+  never: 'fill-blocked',
 };
 
-const EDGE_BORDER: Record<FlowStatus, string> = {
-  idle: 'border-seam',
-  active: 'border-self-dim',
-  done: 'border-trusted-dim',
-  tainted: 'border-semi-dim',
-  blocked: 'border-blocked',
-  never: 'border-blocked',
+const EDGE: Record<FlowStatus, string> = {
+  idle: 'stroke-line-2',
+  active: 'stroke-system',
+  done: 'stroke-trusted/45',
+  tainted: 'stroke-semi/60',
+  blocked: 'stroke-blocked/60',
+  never: 'stroke-line-2',
 };
 
-const EDGE_TEXT: Record<FlowStatus, string> = {
-  idle: 'text-ink-3',
-  active: 'text-self',
-  done: 'text-ink-3',
-  tainted: 'text-semi',
-  blocked: 'text-blocked',
-  never: 'text-blocked',
-};
+/** One node: a marker, a name, and a line of what happened to it. */
+function Node({
+  node,
+  x,
+  y,
+}: {
+  node: FlowNode;
+  x: number;
+  y: number;
+}) {
+  const hollow = node.status === 'never' || node.status === 'idle';
 
-function Marker({ node }: { node: FlowNode }) {
-  if (node.status === 'blocked') {
-    return (
-      <span className="text-blocked font-mono text-[13px] leading-none" aria-hidden>
-        ✕
-      </span>
-    );
-  }
-  if (node.status === 'never') return <Dot hollow />;
-  return <Dot tone={STATUS_TONE[node.status]} />;
+  return (
+    <g className={node.status === 'active' ? 'animate-pulse-soft' : undefined}>
+      {hollow ? (
+        <circle cx={x} cy={y} r="3.5" className="fill-none stroke-line-3" strokeWidth="1" />
+      ) : (
+        <circle cx={x} cy={y} r="3.5" className={FILL[node.status]} />
+      )}
+      <text x={x + 13} y={y + 5} className={`${NAME[node.status]} text-[14.5px] font-medium`}>
+        {node.title}
+      </text>
+      <text x={x + 13} y={y + 23} className={`${DETAIL[node.status]} text-[12.5px]`}>
+        {node.detail}
+      </text>
+      {node.trust !== 'agent' && node.trust !== 'engine' && (
+        <text x={x + 13} y={y - 13} className="fill-fg-4 text-[11.5px]">
+          {node.trust}
+        </text>
+      )}
+    </g>
+  );
 }
 
 export function TrustGraph({ nodes }: { nodes: readonly FlowNode[] }) {
+  const [bazaar, agent, vault, airlock, dispatch] = nodes as readonly [
+    FlowNode,
+    FlowNode,
+    FlowNode,
+    FlowNode,
+    FlowNode,
+  ];
+
+  const refused = airlock.status === 'blocked';
+  const boundaryTone = refused
+    ? 'stroke-blocked/50'
+    : airlock.status === 'active'
+      ? 'stroke-system/50'
+      : 'stroke-line-2';
+
   return (
-    <ol className="list-none p-0 m-0">
-      {nodes.map((node, i) => {
-        const last = i === nodes.length - 1;
-        const engine = node.id === 'airlock';
+    <svg
+      viewBox="0 0 856 248"
+      className="w-full h-auto"
+      focusable="false"
+      role="img"
+      aria-label={`Trust flow. Bazaar: ${bazaar.detail}. Agent: ${agent.detail}. Vault: ${vault.detail}. Airlock: ${airlock.detail}. Dispatch: ${dispatch.detail}.`}
+    >
+      {/* The boundary itself. Everything crosses it; one thing does not. */}
+      <line
+        x1="600"
+        y1="18"
+        x2="600"
+        y2="232"
+        className={boundaryTone}
+        strokeWidth="1"
+        strokeDasharray="2 6"
+      />
+      <text x="600" y="242" textAnchor="middle" className="fill-fg-4 text-[11.5px]">
+        trust boundary
+      </text>
 
-        return (
-          <li key={node.id}>
-            <div
-              className={[
-                'grid grid-cols-[minmax(0,17ch)_minmax(0,1fr)] gap-4 items-center',
-                'border rounded-[3px] px-3.5 py-2.5 bg-panel transition-colors duration-200',
-                engine ? 'bg-panel-2' : '',
-                NODE_RING[node.status],
-              ].join(' ')}
-            >
-              <div className="flex gap-2 items-center min-w-0">
-                <Marker node={node} />
-                <span
-                  className={`font-mono text-[13px] truncate ${
-                    engine ? 'text-self font-medium' : 'text-ink'
-                  }`}
-                >
-                  {node.title}
-                </span>
-              </div>
+      {/* bazaar and vault read into the agent */}
+      <path
+        d="M 176 62 C 250 62, 250 118, 322 118"
+        fill="none"
+        strokeWidth="1.25"
+        className={EDGE[bazaar.status]}
+      />
+      <path
+        d="M 176 190 C 250 190, 250 134, 322 134"
+        fill="none"
+        strokeWidth="1.25"
+        className={EDGE[vault.status]}
+      />
 
-              <div className="flex gap-2.5 items-center justify-between min-w-0 flex-wrap">
-                <span
-                  className={`text-[13px] ${
-                    node.status === 'blocked' || node.status === 'never'
-                      ? 'text-blocked'
-                      : node.status === 'idle'
-                        ? 'text-ink-3'
-                        : 'text-ink-2'
-                  }`}
-                >
-                  {node.detail}
-                </span>
-                <span className="flex gap-2 items-center">
-                  {node.toolName && node.status !== 'idle' && (
-                    <code className="font-mono text-[11.5px] text-ink-3 truncate max-w-[28ch]">
-                      {node.toolName}
-                    </code>
-                  )}
-                  {node.trust !== 'agent' && node.trust !== 'engine' && (
-                    <Tag tone={TRUST_TONE[node.trust] ?? 'neutral'}>{node.trust}</Tag>
-                  )}
-                </span>
-              </div>
-            </div>
+      {/* the agent's write, heading for dispatch through the engine */}
+      <path
+        d="M 470 126 L 566 126"
+        fill="none"
+        strokeWidth="1.25"
+        className={EDGE[airlock.status]}
+      />
+      <path
+        d="M 634 126 L 700 126"
+        fill="none"
+        strokeWidth="1.25"
+        strokeDasharray={refused ? '3 5' : undefined}
+        className={refused ? 'stroke-line-2' : EDGE[dispatch.status]}
+      />
 
-            {!last && (
-              <div className="grid grid-cols-[minmax(0,17ch)_minmax(0,1fr)] gap-4">
-                <div className="flex justify-start pl-[7px]">
-                  <span
-                    className={`block w-0 h-5 border-l ${
-                      node.edge ? EDGE_BORDER[node.status] : 'border-seam'
-                    } ${node.status === 'blocked' ? 'border-dashed' : ''}`}
-                  />
-                </div>
-                {node.edge && (
-                  <span className={`self-center font-mono text-[11px] ${EDGE_TEXT[node.status]}`}>
-                    {node.edge}
-                  </span>
-                )}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+      {bazaar.edge && (
+        <text x="198" y="90" className="fill-semi text-[11.5px]">
+          {bazaar.edge}
+        </text>
+      )}
+      {vault.edge && (
+        <text x="198" y="166" className="fill-fg-3 text-[11.5px]">
+          {vault.edge}
+        </text>
+      )}
+
+      <Node node={bazaar} x={24} y={62} />
+      <Node node={vault} x={24} y={190} />
+      <Node node={agent} x={330} y={126} />
+
+      {/* Airlock sits on the boundary. Its mark is the only thing on the line. */}
+      <g>
+        <rect
+          x="576"
+          y="102"
+          width="48"
+          height="48"
+          rx="10"
+          className={
+            refused
+              ? 'fill-blocked-tint stroke-blocked/40'
+              : airlock.status === 'active'
+                ? 'fill-system-tint stroke-system/40'
+                : 'fill-surface-2 stroke-line-2'
+          }
+          strokeWidth="1"
+        />
+        {refused ? (
+          <path
+            d="M591 117 l18 18 M609 117 l-18 18"
+            className="stroke-blocked"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+        ) : (
+          <path
+            d="M600 112 l14 7 v9 c0 8 -6 14 -14 17 c-8 -3 -14 -9 -14 -17 v-9 z"
+            className={
+              airlock.status === 'active'
+                ? 'fill-none stroke-system'
+                : 'fill-none stroke-fg-3'
+            }
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        )}
+        <text x="600" y="173" textAnchor="middle" className="fill-fg-2 text-[13px] font-medium">
+          Airlock
+        </text>
+        <text
+          x="600"
+          y="190"
+          textAnchor="middle"
+          className={`text-[12px] ${refused ? 'fill-blocked' : 'fill-fg-4'}`}
+        >
+          {airlock.detail}
+        </text>
+      </g>
+
+      <Node node={dispatch} x={706} y={126} />
+    </svg>
   );
 }
