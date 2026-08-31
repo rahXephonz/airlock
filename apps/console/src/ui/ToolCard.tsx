@@ -128,7 +128,7 @@ export function ToolCard({
               )}
               {f.schema.enum ? (
                 <select
-                  className={INPUT}
+                  className={`${INPUT} select cursor-pointer`}
                   value={values[f.name] ?? ''}
                   onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
                 >

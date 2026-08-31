@@ -116,3 +116,25 @@
     animation: airlock-fade-in 160ms ease-out;
   }
 }
+
+@layer components {
+  /*
+   * A select that matches the rest of the controls.
+   *
+   * The native arrow is drawn by the platform: it sits hard against the last
+   * character, ignores the surrounding type colour, and renders differently on
+   * every OS. This replaces it with the same chevron the rest of the interface
+   * uses, at the same weight, with room to breathe.
+   */
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 14px 14px;
+    padding-right: 30px;
+  }
+  .select:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+}

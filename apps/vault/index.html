@@ -12,17 +12,31 @@
     />
     <link rel="stylesheet" href="/fixture.css" />
   </head>
-  <body class="m-0 p-6 max-w-[720px] text-[13.5px] leading-[1.6]">
+  <body class="m-0 p-6 max-w-180 text-[13.5px] leading-[1.6]">
     <header class="flex items-start justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-2.5">
         <span
           class="grid place-items-center size-7 rounded-sm bg-panel-2 ring-1 ring-seam-2 shrink-0"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 text-trusted" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-3.5 text-trusted"
+            aria-hidden="true"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
         </span>
         <span class="flex flex-col leading-tight">
           <span class="font-mono text-[13.5px] font-semibold">vault</span>
-          <span class="text-[11px] text-ink-4">Airlock fixture origin</span>
+          <span class="text-[11px] text-ink-4 mt-px"
+            >Airlock fixture origin</span
+          >
         </span>
       </div>
       <span
@@ -31,17 +45,25 @@
       >
     </header>
 
-    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">Holds the records worth stealing. Trusted by the console and read-heavy — nothing here writes.</p>
+    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">
+      Holds the records worth stealing. Trusted by the console and read-heavy —
+      nothing here writes.
+    </p>
 
     <section class="mt-7 pt-5 border-t border-seam">
       <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Lock state</h2>
       <div class="flex gap-2.5 items-center flex-wrap">
         <span id="state" class="font-mono text-[12.5px]"></span>
-        <button id="toggle" class="h-8 px-3 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 text-[13px] font-medium cursor-pointer transition-colors hover:bg-panel-3">Toggle</button>
+        <button
+          id="toggle"
+          class="h-8 px-3 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 text-[13px] font-medium cursor-pointer transition-colors hover:bg-panel-3"
+        >
+          Toggle
+        </button>
       </div>
       <p class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]">
-        While locked, <code>vault_read_record</code> is not registered at all. An invalid
-        tool should not exist rather than exist and return an error.
+        While locked, <code>vault_read_record</code> is not registered at all.
+        An invalid tool should not exist rather than exist and return an error.
       </p>
     </section>
 
@@ -51,8 +73,15 @@
     </section>
 
     <section class="mt-7 pt-5 border-t border-seam">
-      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Tool activity</h2>
-      <div id="log" class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap">nothing yet</div>
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">
+        Tool activity
+      </h2>
+      <div
+        id="log"
+        class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap"
+      >
+        nothing yet
+      </div>
     </section>
 
     <script type="module">

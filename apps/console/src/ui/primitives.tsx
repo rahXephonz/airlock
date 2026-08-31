@@ -1,8 +1,8 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, ReactNode } from "react";
 
 /** A lucide icon, or anything shaped like one. */
 export type IconComponent = ComponentType<{ className?: string | undefined }>;
-import type { Disposition, TrustLevel } from '@airlock/shared';
+import type { Disposition, TrustLevel } from "@airlock/shared";
 
 /**
  * The visual language, in one file.
@@ -14,58 +14,67 @@ import type { Disposition, TrustLevel } from '@airlock/shared';
  * assembled rather than designed.
  */
 
-export type Tone = 'neutral' | 'trusted' | 'semi' | 'blocked' | 'system';
+export type Tone = "neutral" | "trusted" | "semi" | "blocked" | "system";
 
 export const toneForTrust = (trust: TrustLevel | undefined): Tone =>
-  trust === 'self' ? 'system'
-    : trust === 'trusted' ? 'trusted'
-    : trust === 'semi-trusted' ? 'semi'
-    : 'neutral';
+  trust === "self"
+    ? "system"
+    : trust === "trusted"
+      ? "trusted"
+      : trust === "semi-trusted"
+        ? "semi"
+        : "neutral";
 
 export const toneForDisposition = (d: Disposition): Tone =>
-  d === 'block' ? 'blocked' : d === 'confirm' ? 'semi' : 'trusted';
+  d === "block" ? "blocked" : d === "confirm" ? "semi" : "trusted";
 
 export const TEXT_TONE: Record<Tone, string> = {
-  neutral: 'text-fg-3',
-  trusted: 'text-trusted',
-  semi: 'text-semi',
-  blocked: 'text-blocked',
-  system: 'text-system',
+  neutral: "text-fg-3",
+  trusted: "text-trusted",
+  semi: "text-semi",
+  blocked: "text-blocked",
+  system: "text-system",
 };
 
 const DOT_TONE: Record<Tone, string> = {
-  neutral: 'bg-fg-4',
-  trusted: 'bg-trusted',
-  semi: 'bg-semi',
-  blocked: 'bg-blocked',
-  system: 'bg-system',
+  neutral: "bg-fg-4",
+  trusted: "bg-trusted",
+  semi: "bg-semi",
+  blocked: "bg-blocked",
+  system: "bg-system",
 };
 
 /** A status dot. Never alone: whatever it marks is also written out in words. */
-export function Dot({ tone = 'neutral', hollow = false }: { tone?: Tone; hollow?: boolean }) {
+export function Dot({
+  tone = "neutral",
+  hollow = false,
+}: {
+  tone?: Tone;
+  hollow?: boolean;
+}) {
   return (
     <span
       aria-hidden
       className={
         hollow
-          ? 'inline-block size-[5px] rounded-full ring-1 ring-line-3'
-          : `inline-block size-[5px] rounded-full ${DOT_TONE[tone]}`
+          ? "inline-block size-1.25 rounded-full ring-1 ring-line-3"
+          : `inline-block size-1.25 rounded-full ${DOT_TONE[tone]}`
       }
     />
   );
 }
 
 const BADGE_TONE: Record<Tone, string> = {
-  neutral: 'bg-surface-3 text-fg-2',
-  trusted: 'bg-trusted-tint text-trusted',
-  semi: 'bg-semi-tint text-semi',
-  blocked: 'bg-blocked-tint text-blocked',
-  system: 'bg-system-tint text-system',
+  neutral: "bg-surface-3 text-fg-2",
+  trusted: "bg-trusted-tint text-trusted",
+  semi: "bg-semi-tint text-semi",
+  blocked: "bg-blocked-tint text-blocked",
+  system: "bg-system-tint text-system",
 };
 
 /** A tinted pill. Filled, not outlined — outlines read as terminal chrome. */
 export function Badge({
-  tone = 'neutral',
+  tone = "neutral",
   icon: Icon,
   children,
 }: {
@@ -76,7 +85,7 @@ export function Badge({
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-[11.5px]
-                  font-medium leading-[18px] ${BADGE_TONE[tone]}`}
+                  font-medium leading-4.5 ${BADGE_TONE[tone]}`}
     >
       {Icon && <Icon className="size-3 shrink-0" />}
       {children}
@@ -85,28 +94,30 @@ export function Badge({
 }
 
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-1.5 rounded-sm font-medium whitespace-nowrap ' +
-  'cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-default ' +
-  'disabled:pointer-events-none';
+  "inline-flex items-center justify-center gap-1.5 rounded-sm font-medium whitespace-nowrap " +
+  "cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-default " +
+  "disabled:pointer-events-none";
 
 const BUTTON_VARIANT = {
-  primary: 'bg-fg text-ground hover:bg-fg/90',
-  secondary: 'bg-surface-2 text-fg ring-1 ring-inset ring-line-2 hover:bg-surface-3',
-  ghost: 'text-fg-2 hover:text-fg hover:bg-surface-2',
-  destructive: 'bg-blocked-tint text-blocked ring-1 ring-inset ring-blocked/25 hover:bg-blocked/15',
+  primary: "bg-fg text-ground hover:bg-fg/90",
+  secondary:
+    "bg-surface-2 text-fg ring-1 ring-inset ring-line-2 hover:bg-surface-3",
+  ghost: "text-fg-2 hover:text-fg hover:bg-surface-2",
+  destructive:
+    "bg-blocked-tint text-blocked ring-1 ring-inset ring-blocked/25 hover:bg-blocked/15",
 } as const;
 
 const BUTTON_SIZE = {
-  sm: 'h-7 px-2.5 text-[12.5px]',
-  md: 'h-8 px-3 text-[13px]',
-  lg: 'h-9 px-3.5 text-[13.5px]',
+  sm: "h-7 px-2.5 text-[12.5px]",
+  md: "h-8 px-3 text-[13px]",
+  lg: "h-9 px-3.5 text-[13.5px]",
 } as const;
 
 export function Button({
-  variant = 'secondary',
-  size = 'md',
+  variant = "secondary",
+  size = "md",
   icon: Icon,
-  className = '',
+  className = "",
   children,
   ...props
 }: {
@@ -114,14 +125,18 @@ export function Button({
   size?: keyof typeof BUTTON_SIZE;
   icon?: IconComponent | undefined;
   children?: ReactNode;
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'>) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
   return (
     <button
       type="button"
       {...props}
       className={`${BUTTON_BASE} ${BUTTON_SIZE[size]} ${BUTTON_VARIANT[variant]} ${className}`}
     >
-      {Icon && <Icon className={size === 'lg' ? 'size-4 shrink-0' : 'size-3.5 shrink-0'} />}
+      {Icon && (
+        <Icon
+          className={size === "lg" ? "size-4 shrink-0" : "size-3.5 shrink-0"}
+        />
+      )}
       {children}
     </button>
   );
@@ -130,7 +145,7 @@ export function Button({
 /** A raised surface. No border by default — luminance is the separation. */
 export function Surface({
   children,
-  className = '',
+  className = "",
   inset = true,
 }: {
   children: ReactNode;
@@ -139,7 +154,7 @@ export function Surface({
 }) {
   return (
     <div
-      className={`bg-surface rounded-md ring-1 ring-line ${inset ? 'p-5' : ''} ${className}`}
+      className={`bg-surface rounded-md ring-1 ring-line ${inset ? "p-5" : ""} ${className}`}
     >
       {children}
     </div>
@@ -155,7 +170,7 @@ export function Surface({
 export function SectionTitle({
   children,
   action,
-  className = '',
+  className = "",
 }: {
   children: ReactNode;
   action?: ReactNode;
@@ -183,14 +198,20 @@ export function ViewHeader({
     <header className="flex gap-6 items-start justify-between flex-wrap mb-6">
       <div>
         <h2 className="text-[19px] font-semibold m-0">{title}</h2>
-        {lede && <p className="text-fg-3 text-[13px] mt-1.5 max-w-[68ch] leading-[1.6]">{lede}</p>}
+        {lede && (
+          <p className="text-fg-3 text-[13px] mt-1.5 max-w-[68ch] leading-[1.6]">
+            {lede}
+          </p>
+        )}
       </div>
-      {actions && <div className="flex gap-2 items-center flex-wrap">{actions}</div>}
+      {actions && (
+        <div className="flex gap-2 items-center flex-wrap">{actions}</div>
+      )}
     </header>
   );
 }
 
-export function Separator({ className = '' }: { className?: string }) {
+export function Separator({ className = "" }: { className?: string }) {
   return <hr className={`border-0 border-t border-line m-0 ${className}`} />;
 }
 
@@ -205,13 +226,20 @@ export function Facts({
   return (
     <dl
       className={`m-0 grid gap-x-8 gap-y-3 ${
-        columns === 2 ? 'grid-cols-[repeat(auto-fit,minmax(140px,1fr))]' : 'grid-cols-1'
+        columns === 2
+          ? "grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
+          : "grid-cols-1"
       }`}
     >
       {rows.map(([k, v]) => (
-        <div key={k} className={columns === 2 ? '' : 'grid grid-cols-[minmax(0,13ch)_1fr] gap-4'}>
+        <div
+          key={k}
+          className={
+            columns === 2 ? "" : "grid grid-cols-[minmax(0,13ch)_1fr] gap-4"
+          }
+        >
           <dt className="text-[12.5px] text-fg-3">{k}</dt>
-          <dd className="m-0 text-[13px] text-fg break-words">{v}</dd>
+          <dd className="m-0 text-[13px] text-fg wrap-break-word">{v}</dd>
         </div>
       ))}
     </dl>
@@ -219,8 +247,16 @@ export function Facts({
 }
 
 /** Monospace, for identifiers only. */
-export function Mono({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <span className={`font-mono text-[12.5px] ${className}`}>{children}</span>;
+export function Mono({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span className={`font-mono text-[12.5px] ${className}`}>{children}</span>
+  );
 }
 
 /** Table shell. Row separators only; no cell borders, no outer box. */
@@ -277,10 +313,10 @@ export function Row({
     <tr
       {...(onSelect ? { onClick: onSelect } : {})}
       className={[
-        'border-b border-line last:border-b-0 transition-colors duration-150',
-        onSelect ? 'cursor-pointer hover:bg-surface-2' : '',
-        selected ? 'bg-surface-2' : '',
-      ].join(' ')}
+        "border-b border-line last:border-b-0 transition-colors duration-150",
+        onSelect ? "cursor-pointer hover:bg-surface-2" : "",
+        selected ? "bg-surface-2" : "",
+      ].join(" ")}
     >
       {children}
     </tr>
@@ -306,9 +342,9 @@ export function RowButton({
         onSelect();
       }}
       className={[
-        'bg-transparent border-0 p-0 text-left cursor-pointer text-fg',
-        mono ? 'font-mono text-[12.5px]' : 'text-[13px]',
-      ].join(' ')}
+        "bg-transparent border-0 p-0 text-left cursor-pointer text-fg",
+        mono ? "font-mono text-[12.5px]" : "text-[13px]",
+      ].join(" ")}
     >
       {children}
     </button>
@@ -329,11 +365,11 @@ export function Cell({
   return (
     <td
       className={[
-        'px-3 py-2.5 align-middle first:pl-4 last:pr-4',
-        mono ? 'font-mono text-[12.5px]' : '',
-        muted ? 'text-fg-3' : 'text-fg-2',
-        wide ? '' : 'whitespace-nowrap',
-      ].join(' ')}
+        "px-3 py-2.5 align-middle first:pl-4 last:pr-4",
+        mono ? "font-mono text-[12.5px]" : "",
+        muted ? "text-fg-3" : "text-fg-2",
+        wide ? "" : "whitespace-nowrap",
+      ].join(" ")}
     >
       {children}
     </td>
@@ -361,7 +397,11 @@ export function EmptyState({
     <div className="flex flex-col items-center text-center px-6 py-12">
       {Icon && <Icon className="size-5 text-fg-4 mb-3" />}
       <p className="text-[13.5px] text-fg-2 m-0">{title}</p>
-      {detail && <p className="text-[12.5px] text-fg-4 mt-1.5 max-w-[42ch] m-0">{detail}</p>}
+      {detail && (
+        <p className="text-[12.5px] text-fg-4 mt-1.5 max-w-[42ch] m-0">
+          {detail}
+        </p>
+      )}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

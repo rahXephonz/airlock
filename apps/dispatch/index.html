@@ -12,17 +12,31 @@
     />
     <link rel="stylesheet" href="/fixture.css" />
   </head>
-  <body class="m-0 p-6 max-w-[720px] text-[13.5px] leading-[1.6]">
+  <body class="m-0 p-6 max-w-180 text-[13.5px] leading-[1.6]">
     <header class="flex items-start justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-2.5">
         <span
           class="grid place-items-center size-7 rounded-sm bg-panel-2 ring-1 ring-seam-2 shrink-0"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 text-trusted" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-3.5 text-trusted"
+            aria-hidden="true"
+          >
+            <path d="m22 2-7 20-4-9-9-4Z"></path>
+            <path d="M22 2 11 13"></path>
+          </svg>
         </span>
         <span class="flex flex-col leading-tight">
           <span class="font-mono text-[13.5px] font-semibold">dispatch</span>
-          <span class="text-[11px] text-ink-4">Airlock fixture origin</span>
+          <span class="text-[11px] text-ink-4 mt-px"
+            >Airlock fixture origin</span
+          >
         </span>
       </div>
       <span
@@ -31,12 +45,18 @@
       >
     </header>
 
-    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">The only place a real outbound action happens. Trusted by the console and write-capable — which is what makes every call here matter.</p>
+    <p class="text-[13px] text-ink-3 mt-3.5 mb-0 max-w-[68ch]">
+      The only place a real outbound action happens. Trusted by the console and
+      write-capable — which is what makes every call here matter.
+    </p>
 
     <section class="mt-7 pt-5 border-t border-seam">
       <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Channel</h2>
       <div class="flex gap-2.5 items-center flex-wrap">
-        <select id="channel" class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full cursor-pointer">
+        <select
+          id="channel"
+          class="select h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 pl-2.5 text-[12.5px] font-mono max-w-full cursor-pointer"
+        >
           <option value="">— none selected —</option>
           <option value="orders" selected>orders (public)</option>
           <option value="support">support (private)</option>
@@ -59,26 +79,44 @@
       >
         <input
           name="body"
-          class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full min-w-[220px]"
+          class="h-8 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 px-2.5 text-[12.5px] font-mono max-w-full min-w-55"
           placeholder="message body"
           size="42"
           toolparamdescription="The exact message text to send."
         />
-        <button type="submit" class="h-8 px-3 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 text-[13px] font-medium cursor-pointer transition-colors hover:bg-panel-3">Send</button>
+        <button
+          type="submit"
+          class="h-8 px-3 rounded-sm bg-panel-2 text-ink ring-1 ring-inset ring-seam-2 text-[13px] font-medium cursor-pointer transition-colors hover:bg-panel-3"
+        >
+          Send
+        </button>
       </form>
-      <p id="declState" class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]">
-        Declarative WebMCP tool. Present in Chrome; absent in ChatGPT's in-app browser.
+      <p
+        id="declState"
+        class="text-[12.5px] text-ink-4 mt-2.5 mb-0 max-w-[68ch]"
+      >
+        Declarative WebMCP tool. Present in Chrome; absent in ChatGPT's in-app
+        browser.
       </p>
     </section>
 
     <section class="mt-7 pt-5 border-t border-seam">
       <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Sent</h2>
-      <div id="sent" class="text-[12.5px] text-ink-4 grid gap-1.5">nothing sent</div>
+      <div id="sent" class="text-[12.5px] text-ink-4 grid gap-1.5">
+        nothing sent
+      </div>
     </section>
 
     <section class="mt-7 pt-5 border-t border-seam">
-      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">Tool activity</h2>
-      <div id="log" class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap">nothing yet</div>
+      <h2 class="text-[13px] font-medium text-ink-2 m-0 mb-2.5">
+        Tool activity
+      </h2>
+      <div
+        id="log"
+        class="font-mono text-[11.5px] text-ink-3 grid gap-1 whitespace-pre-wrap"
+      >
+        nothing yet
+      </div>
     </section>
 
     <script type="module">
