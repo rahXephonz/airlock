@@ -122,18 +122,36 @@ export function AppShell({
       >
         <div
           className={`flex items-center gap-2.5 lg:mb-6 shrink-0 ${
-            collapsed ? 'lg:justify-center' : ''
+            collapsed ? 'lg:flex-col lg:gap-3' : 'lg:justify-between'
           }`}
         >
-          <Mark />
-          {!collapsed && (
-            <span className="flex flex-col leading-tight">
-              <span className="text-[15px] font-semibold">Airlock</span>
-              <span className="hidden lg:block text-[12px] text-fg-2 mt-1">
-                WebMCP security
+          <span className="flex items-center gap-2.5 min-w-0">
+            <Mark />
+            {!collapsed && (
+              <span className="flex flex-col leading-tight">
+                <span className="text-[15px] font-semibold">Airlock</span>
+                <span className="hidden lg:block text-[12px] text-fg-2 mt-1">
+                  WebMCP security
+                </span>
               </span>
-            </span>
-          )}
+            )}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="hidden lg:grid place-items-center size-7 rounded-md shrink-0 cursor-pointer
+                       text-fg-3 hover:text-fg hover:bg-surface-2 transition-colors duration-150"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4" aria-hidden />
+            ) : (
+              <PanelLeftClose className="size-4" aria-hidden />
+            )}
+          </button>
         </div>
 
         <nav
@@ -172,27 +190,6 @@ export function AppShell({
           }`}
         >
           {collapsed ? statusCompact : status}
-
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={[
-              'mt-4 flex items-center gap-2.5 h-8 rounded-md cursor-pointer w-full',
-              'text-[12.5px] text-fg-3 hover:text-fg hover:bg-surface-2',
-              'transition-colors duration-150',
-              collapsed ? 'justify-center px-0' : 'px-3',
-            ].join(' ')}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4 shrink-0" aria-hidden />
-            ) : (
-              <PanelLeftClose className="size-4 shrink-0" aria-hidden />
-            )}
-            {!collapsed && 'Collapse'}
-          </button>
         </div>
       </header>
 
