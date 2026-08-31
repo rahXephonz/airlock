@@ -85,7 +85,7 @@ export function AppShell({
           <Mark />
           <span className="flex flex-col leading-tight">
             <span className="text-[15px] font-semibold">Airlock</span>
-            <span className="hidden lg:block text-[12px] text-fg-4 mt-1">
+            <span className="hidden lg:block text-[12px] text-fg-2 mt-1">
               WebMCP security
             </span>
           </span>
