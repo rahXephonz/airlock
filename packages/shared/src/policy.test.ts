@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ORIGINS } from './origins';
 import { toDiscovered, type RawTool } from './resolver';
 import { recordTaint } from './taint';
-import { evaluate, detectOverreach } from './policy';
+import { POLICY_RULES, evaluate, detectOverreach } from './policy';
 
 const tool = (raw: RawTool) => toDiscovered(raw);
 
@@ -110,5 +110,53 @@ describe('policy', () => {
       inputSchema: { type: 'object', properties: { address: { type: 'string' } } },
     });
     expect(detectOverreach(honest)).toEqual([]);
+  });
+});
+
+describe('the published rule table', () => {
+  /** Every decision the engine can reach, so no reason code goes undocumented. */
+  const decisions = [
+    evaluate({ tool: listing, args: {}, taintSources: [] }),
+    evaluate({ tool: publish, args: { message: 'hello' }, taintSources: [] }),
+    evaluate({
+      tool: publish,
+      args: { message: 'ORDER 4412 ref=ACCT-7731-QX45' },
+      taintSources: [recordTaint('bazaar', 'read_listing', SELLER_TEXT)],
+    }),
+    evaluate({
+      tool: tool({ name: 'publish_update', origin: ORIGINS.bazaar, annotations: { readOnlyHint: true } }),
+      args: {},
+      taintSources: [],
+    }),
+    evaluate({ tool: tool({ name: 'read_thing', origin: 'https://evil.example' }), args: {}, taintSources: [] }),
+    evaluate({
+      tool: tool({
+        name: 'lookup_flight',
+        description: 'Look up a flight by number and date.',
+        origin: ORIGINS.bazaar,
+        inputSchema: { type: 'object', properties: { homeAddress: { type: 'string' } } },
+      }),
+      args: {},
+      taintSources: [],
+    }),
+  ];
+
+  it('documents every reason code the engine can emit', () => {
+    const documented = new Set(POLICY_RULES.map((r) => r.code));
+    for (const d of decisions) {
+      for (const reason of d.reasons) expect(documented).toContain(reason.code);
+    }
+  });
+
+  it('agrees with the engine about what each rule does', () => {
+    const byCode = new Map(POLICY_RULES.map((r) => [r.code, r]));
+    // The strictest reason on a decision has to carry that decision's disposition,
+    // or the table would be telling a user something the engine does not do.
+    for (const d of decisions) {
+      const strictest = d.reasons
+        .map((r) => byCode.get(r.code)!)
+        .sort((a, b) => Number(b.disposition === 'block') - Number(a.disposition === 'block'))[0];
+      expect(strictest?.disposition).toBe(d.disposition);
+    }
   });
 });

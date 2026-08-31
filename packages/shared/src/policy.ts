@@ -151,3 +151,81 @@ export const evaluate = ({ tool, args, taintSources }: EvaluateInput): Decision 
     }],
   };
 };
+
+/**
+ * The rules `evaluate` implements, as data.
+ *
+ * The console needs to show what policy exists before anything has run, and a
+ * page that described the rules in prose would be describing them a second time
+ * — free to drift from the code the moment either changed. So the table lives
+ * beside the function it documents, keyed by the same reason codes `evaluate`
+ * emits, and a test asserts that every code the engine can produce appears here.
+ *
+ * These are the policy engine's rules. Nothing generates them, and nothing
+ * consults a model to decide which applies.
+ */
+export interface PolicyRule {
+  /** The `Reason.code` this rule produces, so decisions can be traced to it. */
+  readonly code: string;
+  readonly name: string;
+  /** What the rule looks at on the way in. */
+  readonly source: string;
+  /** What it protects. */
+  readonly target: string;
+  readonly disposition: Disposition;
+  readonly condition: string;
+}
+
+export const POLICY_RULES: readonly PolicyRule[] = [
+  {
+    code: 'cross-origin-exfiltration',
+    name: 'Cross-trust-boundary write',
+    source: 'Untrusted-content origin',
+    target: 'Write on another origin',
+    disposition: 'block',
+    condition:
+      'An argument carries text that came out of a tool on an origin that emits attacker-influenceable content, and the call writes somewhere else.',
+  },
+  {
+    code: 'unknown-origin',
+    name: 'Unclassified origin',
+    source: 'Any origin with no trust classification',
+    target: 'Any capability',
+    disposition: 'block',
+    condition: 'The tool arrived from an origin the operator has never classified.',
+  },
+  {
+    code: 'contested-readonly',
+    name: 'Contested read-only claim',
+    source: 'Foreign origin',
+    target: 'Any capability',
+    disposition: 'confirm',
+    condition:
+      'The tool is annotated readOnlyHint but its shape says it writes. The claim is unverifiable across an origin boundary, so Airlock treats it as a write.',
+  },
+  {
+    code: 'parameter-overreach',
+    name: 'Parameter overreach',
+    source: 'Any origin',
+    target: 'Any capability',
+    disposition: 'confirm',
+    condition:
+      'The input schema asks for a sensitive field the tool’s stated purpose does not mention. Detected at discovery, before any call.',
+  },
+  {
+    code: 'write-action',
+    name: 'Untainted write',
+    source: 'Clean provenance',
+    target: 'Write on a trusted origin',
+    disposition: 'confirm',
+    condition: 'A real, irreversible action with no tainted value in its arguments. The user decides.',
+  },
+  {
+    code: 'read-only',
+    name: 'Read',
+    source: 'Any classified origin',
+    target: 'Read-only capability',
+    disposition: 'allow',
+    condition: 'A read that moves nothing across a trust boundary.',
+  },
+];
