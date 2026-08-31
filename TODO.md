@@ -57,11 +57,18 @@ robustness case, and packaging.
 
 ## P1 — strengthens the submission
 
-- [ ] **10. Verify `toolchange` across origins** — does locking the vault remove
-      the tool from the console without a reload? Currently unknown; the
-      "Re-run discovery" button exists as the fallback either way.
+- [x] **10. Verify `toolchange` across origins** — locking the vault removes the
+      proxy without a reload, unlocking restores it, and neither produces a
+      duplicate registration. Covered by `mediation.test.ts` against a fake
+      `modelContext`; the "Re-run discovery" button remains the fallback where
+      `addEventListener` is absent.
 
-- [ ] **11. Replay from the audit log**
+- [x] **11. Replay from the audit log** — whole-log replay plus a per-decision
+      replay on the blocked call. The engine recomputes each disposition from the
+      stored arguments and a taint chain rebuilt in call order; replay takes no
+      resolver and so cannot invoke a capability.
+
+      Original note:
       The video arc ends with "audit log replays it" and the feature does not
       exist. The ledger already stores everything needed. Worth building: replay
       proves decisions are kept as *data* rather than prose, which is exactly the
