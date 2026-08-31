@@ -1,15 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import {
-  TRUST,
-  type DiscoveredTool,
-  type ToolResolver,
-} from "@airlock/shared";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { DiscoveredTool, ToolResolver } from "@airlock/shared";
 import { CrossOriginResolver } from "./webmcp/crossOriginResolver";
 import { SimulatedResolver } from "./webmcp/simulatedResolver";
 import { Mediator } from "./webmcp/mediation";
@@ -20,17 +10,20 @@ import {
   probe,
   type Capabilities,
 } from "./webmcp/capabilities";
-import { Ledger } from "./state/ledger";
+import { Ledger, type LedgerEntry } from "./state/ledger";
 import { ConsentQueue } from "./state/consent";
-import { Hero } from "./ui/Hero";
-import { Scenario } from "./ui/Scenario";
-import { ToolCard } from "./ui/ToolCard";
+import { useRoute } from "./state/route";
+import type { ReplayReport } from "./state/replay";
+import { AppShell, ProtectionStatus } from "./ui/AppShell";
+import { PartnerFrames } from "./ui/PartnerFrames";
 import { ConsentDialog } from "./ui/ConsentDialog";
-import { LedgerView } from "./ui/LedgerView";
 import { OverrideDialog } from "./ui/OverrideDialog";
-import { RegistrationPanel } from "./ui/RegistrationPanel";
-import type { LedgerEntry } from "./state/ledger";
-import { Button, PANEL, Section, Tag, toneForTrust } from "./ui/primitives";
+import { DecisionDrawer } from "./ui/DecisionDrawer";
+import { Overview } from "./views/Overview";
+import { Activity } from "./views/Activity";
+import { Policies } from "./views/Policies";
+import { Origins } from "./views/Origins";
+import { WebMCP } from "./views/WebMCP";
 
 const PARTNERS = ["vault", "dispatch", "bazaar"] as const;
 
@@ -64,19 +57,17 @@ const offlineFromQuery = (): ReadonlySet<string> =>
       .filter(Boolean) ?? [],
   );
 
-const DEAD_ORIGIN = "https://airlock-this-origin-does-not-exist.netlify.app";
-
 const ledger = new Ledger();
 const consent = new ConsentQueue();
 
 export default function App() {
+  const [view, go] = useRoute();
   const [resolver, setResolver] = useState<ToolResolver | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [diagnostic, setDiagnostic] = useState("");
   const [tools, setTools] = useState<DiscoveredTool[]>([]);
   const [note, setNote] = useState("Checking what this browser supports…");
-  const [capabilities, setCapabilities] =
-    useState<Capabilities>(EMPTY_CAPABILITIES);
+  const [capabilities, setCapabilities] = useState<Capabilities>(EMPTY_CAPABILITIES);
   const [rereading, setRereading] = useState(false);
   const [publishedCount, setPublishedCount] = useState(0);
   const mediator = useRef<Mediator | null>(null);
@@ -94,21 +85,28 @@ export default function App() {
   const canFederate = useRef(false);
   /** Caps how often a loading frame may restart discovery. */
   const retries = useRef(0);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  /** The call currently in flight, so the trust flow can show it moving. */
+  const [activeTool, setActiveTool] = useState<string | undefined>(undefined);
+  /** The decision open in the drawer, and whether replay should already be run. */
+  const [inspecting, setInspecting] = useState<{ entry: LedgerEntry; replay: boolean } | null>(
+    null,
   );
   const [reviewing, setReviewing] = useState<LedgerEntry | null>(null);
+  const [replayed, setReplayed] = useState<ReplayReport | null>(null);
   /** Frames that failed to load, so an unreachable partner reads as unavailable. */
-  const [unreachable, setUnreachable] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
+  const [unreachable, setUnreachable] = useState<ReadonlySet<string>>(new Set());
   const [loaded, setLoaded] = useState<ReadonlySet<string>>(new Set());
   const [offline] = useState(offlineFromQuery);
 
-  const entries = useSyncExternalStore(ledger.subscribe, ledger.getSnapshot);
-  const pending = useSyncExternalStore(consent.subscribe, consent.getSnapshot);
+  // The third argument is the server snapshot. Nothing here is server-rendered
+  // in production, but it lets the whole shell be rendered in a test, which is
+  // the only cheap way to catch a crash on first paint.
+  const entries = useSyncExternalStore(ledger.subscribe, ledger.getSnapshot, ledger.getSnapshot);
+  const pending = useSyncExternalStore(consent.subscribe, consent.getSnapshot, consent.getSnapshot);
 
-  /** Re-reads the browser's own tool registry, for the registration panel. */
+  /** Re-reads the browser's own tool registry, for the WebMCP view. */
   const reread = useCallback(async () => {
     setRereading(true);
     try {
@@ -146,7 +144,7 @@ export default function App() {
     }
 
     if (canFederate.current) {
-      setNote("Waiting for the partner frames to publish their tools…");
+      setNote("Waiting for the partner frames to publish their capabilities…");
       const until = Date.now() + FEDERATION_BUDGET_MS;
       while (Date.now() < until) {
         await new Promise((r) => setTimeout(r, 350));
@@ -205,10 +203,10 @@ export default function App() {
         // leave the page claiming it is still looking for tools it already has.
         setNote(
           chosen.resolver.id === "cross-origin"
-            ? `Discovered ${found.length} tools across ${origins} partner origins.`
+            ? `Discovered ${found.length} capabilities across ${origins} partner origins.`
             : chosen.capabilities.present
-              ? "This browser runs WebMCP but withholds tools across origins, so the partner surface below is a stand-in. Everything downstream of it is real — including the mediated proxies, which are registered with this browser's own registerTool and listed further down."
-              : "This browser has no WebMCP support, so the partner surface below is a stand-in. The policy engine, consent flow and ledger below are the real ones.",
+              ? "This browser runs WebMCP but withholds capabilities across origins, so the partner surface is a stand-in. Everything downstream of it is real — including the mediated proxies, registered with this browser's own registerTool."
+              : "This browser has no WebMCP support, so the partner surface is a stand-in. The policy engine, consent flow and ledger are the real ones.",
         );
 
         const report = await mediatorInstance.publish(found);
@@ -219,7 +217,7 @@ export default function App() {
             ? `${report.registered} mediated proxies registered. An agent attached to this page sees these and never the partner tools themselves.`
             : `${report.registered} of ${found.length} proxies registered. Failed: ${report.failures.join("; ")}`,
         );
-        // Read the browser's registry back, so what the panel below reports is
+        // Read the browser's registry back, so what the WebMCP view reports is
         // the browser's account of what it holds rather than this page's.
         const after = await probe();
         if (!cancelled) setCapabilities(after);
@@ -286,225 +284,133 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [loaded]);
 
-  const call = useCallback(
-    async (tool: DiscoveredTool, args: Record<string, unknown>) => {
-      await mediator.current?.call(tool, args, undefined, false);
-    },
-    [],
-  );
+  const call = useCallback(async (tool: DiscoveredTool, args: Record<string, unknown>) => {
+    await mediator.current?.call(tool, args, undefined, false);
+  }, []);
 
   /**
    * Re-runs a blocked call with the block released.
    *
-   * Reachable only from the ledger, and only after the override dialog has shown
-   * the provenance. Nothing an agent can call leads here.
+   * Reachable only from the console's own UI, and only after the override
+   * dialog has shown the provenance. Nothing an agent can call leads here.
    */
   const release = useCallback(
     async (entry: LedgerEntry) => {
       const tool = tools.find((t) => t.name === entry.toolName);
       setReviewing(null);
+      setInspecting(null);
       if (!tool) return;
-      await mediator.current?.call(
-        tool,
-        entry.args as Record<string, unknown>,
-        undefined,
-        true,
-      );
+      await mediator.current?.call(tool, entry.args as Record<string, unknown>, undefined, true);
     },
     [tools],
   );
 
   const federatedNow = resolver?.id === "cross-origin";
   const settled = resolver !== null;
+  const partnerOrigins = new Set(tools.map((t) => t.profile?.name).filter(Boolean)).size;
+  const offlineNames = new Set([...unreachable, ...offline]);
+
+  const status = (
+    <ProtectionStatus
+      mediating={publishedCount > 0 || tools.length > 0}
+      origins={partnerOrigins}
+      capabilities={publishedCount || tools.length}
+      transport={!settled ? "Starting" : federatedNow ? "Native" : "Fallback"}
+      onOpenDiagnostics={() => go("webmcp")}
+    />
+  );
 
   return (
-    <div className="max-w-[1060px] mx-auto px-4 sm:px-[22px] pb-24">
-      <Hero />
-
-      <Section
-        label="Origins"
-        lede="Trust is Airlock's own judgement of each origin, set here and never moved by anything the origin asserts about itself."
-      >
-        <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(224px,100%),1fr))]">
-          {(["console", ...PARTNERS] as const).map((name) => {
-            const p = TRUST[name];
-            const count = tools.filter((t) => t.profile?.name === name).length;
-            // An origin that failed to load, or that a working federation found
-            // nothing from, is reported as unavailable rather than as empty.
-            const down =
-              name !== "console" &&
-              (unreachable.has(name) ||
-                offline.has(name) ||
-                (federatedNow && count === 0));
-            return (
-              <div className={`${PANEL} p-4`} key={name}>
-                <div className="flex gap-2 items-center flex-wrap mb-2.5">
-                  <h3 className="font-mono text-sm font-semibold m-0">
-                    {p.name}
-                  </h3>
-                  {down && <Tag tone="bad">unavailable</Tag>}
-                </div>
-                <Tag tone={toneForTrust(p.trust)}>{p.trust}</Tag>
-                <p className="text-ink-2 text-[13.5px] mt-2.5 leading-[1.5]">
-                  {p.rationale}
-                </p>
-                <p className="font-mono text-xs text-ink-3 mt-3 tabular-nums">
-                  {name === "console"
-                    ? "policy engine"
-                    : down
-                      ? "did not load — its tools are absent"
-                      : `${count} tool${count === 1 ? "" : "s"} discovered`}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section
-        label="The attack"
-        lede="A marketplace listing describes a fulfilment process whose steps move the buyer's billing reference into a public write, phrased as the thing the user just asked to have done. Nothing in the user's request authorises publishing anything."
-      >
-        <Scenario tools={tools} onCall={call} entries={entries} />
-      </Section>
-
-      <Section
-        label="Discovered tools"
-        lede="What each origin published, and what Airlock concluded about it. A read-only claim from a foreign origin is recorded as a claim and never used to decide anything."
-      >
-        <div className="flex gap-2.5 items-start mb-4 flex-wrap sm:flex-nowrap">
-          <div
-            className={`flex-1 min-w-[220px] rounded-[2px] px-4 py-3 text-sm border ${
-              federatedNow
-                ? "bg-trusted-dim border-[#2a4c42] text-trusted"
-                : settled
-                  ? "bg-semi-dim border-[#4b3d18] text-semi"
-                  : "bg-panel-2 border-seam-2 text-ink-2"
-            }`}
-          >
-            {note}
-          </div>
-          <Button onClick={() => setReloadKey((k) => k + 1)}>
-            Re-run discovery
-          </Button>
-        </div>
-        {diagnostic && (
-          <p className="text-ink-3 text-[13px] mb-4 max-w-[76ch]">
-            {diagnostic}
-          </p>
-        )}
-
-        <div className="grid gap-3">
-          {tools.length === 0 && (
-            <p className="text-ink-3 text-sm">
-              {settled ? "Nothing discovered yet." : "Discovering…"}
-            </p>
-          )}
-          {tools.map((t) => (
-            <ToolCard
-              key={`${t.raw.origin}-${t.name}`}
-              tool={t}
-              onRun={call}
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section
-        label="WebMCP, as this browser implements it"
-        lede="Support is uneven and no user-agent string tells you which parts you have — ChatGPT's in-app browser reports Chrome 151 and withholds most of the federation surface. So every row below is a call that was made, and the tool names are read back out of the browser's own registry."
-      >
-        <RegistrationPanel
-          capabilities={capabilities}
-          publishedCount={publishedCount}
-          onReread={() => void reread()}
-          rereading={rereading}
-        />
-      </Section>
-
-      <Section
-        label="Partner origins, live"
-        lede={
-          <>
-            Each partner runs here in its own frame with{" "}
-            <code className="font-mono text-ink">allow=&quot;tools&quot;</code>.
-            These are separate instances from the same sites opened in another
-            tab, so change their state here. Lock the vault and its tool
-            disappears from the list above — an invalid tool stops existing
-            rather than existing and failing.
-            {settled && !federatedNow && capabilities.present && (
-              <>
-                {" "}
-                This browser gives frames no{" "}
-                <code className="font-mono text-ink">modelContext</code> of their
-                own, so these three run and render but publish nothing that
-                reaches this page.
-              </>
-            )}
-          </>
+    <>
+      <AppShell
+        view={view}
+        onNavigate={go}
+        status={status}
+        frames={
+          <PartnerFrames
+            partners={PARTNERS}
+            visible={view === "origins"}
+            offline={offline}
+            onLoad={(name) => {
+              setLoaded((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
+              setUnreachable((prev) => {
+                if (!prev.has(name)) return prev;
+                const next = new Set(prev);
+                next.delete(name);
+                return next;
+              });
+              scheduleRediscovery();
+            }}
+            onError={(name) => setUnreachable((prev) => new Set(prev).add(name))}
+          />
         }
       >
-        <div className="grid gap-3.5 grid-cols-[repeat(auto-fit,minmax(min(286px,100%),1fr))]">
-          {PARTNERS.map((name) => (
-            <figure key={name} className="m-0">
-              <figcaption className="font-mono text-[11.5px] text-ink-3 mb-1.5 break-all">
-                {name} ·{" "}
-                {offline.has(name)
-                  ? "offline (demonstrating degradation)"
-                  : TRUST[name].url.replace("https://", "")}
-              </figcaption>
-              <iframe
-                className="w-full h-[272px] border border-seam rounded-[3px] bg-panel"
-                src={offline.has(name) ? DEAD_ORIGIN : TRUST[name].url}
-                allow="tools"
-                title={name}
-                loading="eager"
-                // A frame that finishes loading after discovery gave up is the
-                // one case a retry cannot cover, so its arrival triggers another
-                // — but only where a frame can publish tools at all.
-                onLoad={() => {
-                  setLoaded((prev) =>
-                    prev.has(name) ? prev : new Set(prev).add(name),
-                  );
-                  setUnreachable((prev) => {
-                    if (!prev.has(name)) return prev;
-                    const next = new Set(prev);
-                    next.delete(name);
-                    return next;
-                  });
-                  scheduleRediscovery();
-                }}
-                // A partner that is down must read as unavailable rather than
-                // taking the console with it. AGENT.md §4 calls this mandatory.
-                onError={() =>
-                  setUnreachable((prev) => new Set(prev).add(name))
-                }
-              />
-            </figure>
-          ))}
-        </div>
-      </Section>
-
-      <Section
-        label="Audit log"
-        lede="Every mediated call and the reasoning behind it, kept as data rather than as prose in a transcript. It survives a reload — an audit log that a refresh empties is prose in a transcript by another name."
-      >
-        {entries.length > 0 && (
-          <div className="flex justify-end mb-3">
-            <Button onClick={ledger.clear}>Clear the log</Button>
-          </div>
+        {view === "overview" && (
+          <Overview
+            tools={tools}
+            entries={entries}
+            activeTool={activeTool}
+            degraded={federatedNow ? undefined : note}
+            onCall={call}
+            onActive={setActiveTool}
+            onInspect={(entry) => setInspecting({ entry, replay: false })}
+            onReplay={(entry) => setInspecting({ entry, replay: true })}
+          />
         )}
-        <LedgerView entries={entries} onOverride={setReviewing} />
-      </Section>
+
+        {view === "activity" && (
+          <Activity
+            entries={entries}
+            tools={tools}
+            selectedId={inspecting?.entry.id}
+            replayed={replayed}
+            onSelect={(entry) => setInspecting({ entry, replay: false })}
+            onReplayAll={setReplayed}
+            onClear={() => {
+              setReplayed(null);
+              setInspecting(null);
+              ledger.clear();
+            }}
+          />
+        )}
+
+        {view === "policies" && <Policies entries={entries} />}
+
+        {view === "origins" && <Origins tools={tools} unreachable={offlineNames} onCall={call} />}
+
+        {view === "webmcp" && (
+          <WebMCP
+            capabilities={capabilities}
+            federated={!!federatedNow}
+            publishedCount={publishedCount}
+            rereading={rereading}
+            onReread={() => void reread()}
+            diagnostic={diagnostic}
+          />
+        )}
+      </AppShell>
+
+      {inspecting && (
+        <DecisionDrawer
+          entry={inspecting.entry}
+          entries={entries}
+          tools={tools}
+          autoReplay={inspecting.replay}
+          onRelease={setReviewing}
+          onClose={() => setInspecting(null)}
+        />
+      )}
 
       {pending && <ConsentDialog request={pending} />}
+
       {reviewing && (
         <OverrideDialog
           entry={reviewing}
+          entries={entries}
           onConfirm={() => void release(reviewing)}
           onCancel={() => setReviewing(null)}
         />
       )}
-    </div>
+    </>
   );
 }

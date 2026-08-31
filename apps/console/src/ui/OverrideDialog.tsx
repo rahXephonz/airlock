@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { LedgerEntry } from '../state/ledger';
+import { chainFor } from '../state/provenance';
+import { ProvenanceChainView } from './ProvenanceChain';
 import { Button, LABEL } from './primitives';
 
 /**
@@ -17,10 +19,13 @@ import { Button, LABEL } from './primitives';
  */
 export function OverrideDialog({
   entry,
+  entries,
   onConfirm,
   onCancel,
 }: {
   entry: LedgerEntry;
+  /** The whole log, so the chain can show which earlier read fed this call. */
+  entries: readonly LedgerEntry[];
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -47,23 +52,12 @@ export function OverrideDialog({
           what the tool is. Releasing it sends the data across the boundary anyway.
         </p>
 
-        {sources.length > 0 && (
-          <div className="mt-4">
-            <p className={LABEL}>Where this value came from</p>
-            <ol className="mt-2 list-none p-0 m-0 grid gap-2">
-              {sources.map((t, i) => (
-                <li key={i} className="border-l-2 border-blocked pl-3 text-sm leading-[1.55]">
-                  <code className="font-mono text-xs text-ink-3">{t.source.toolName}</code>{' '}
-                  on <span className="text-semi">{t.source.origin}</span> returned text that
-                  appears in this call:
-                  <mark className="ml-1 bg-blocked-dim text-[#ffc9c9] px-[3px] rounded-[2px] font-mono text-xs">
-                    {t.fragment}
-                  </mark>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+        <div className="mt-4">
+          <ProvenanceChainView
+            chain={chainFor(entry, entries)}
+            title="Where this value came from"
+          />
+        </div>
 
         <p className={`${LABEL} mt-4`}>Arguments as they will be sent</p>
         <pre className="bg-[#0b1218] border border-seam rounded-[2px] p-3 mt-2 text-xs
