@@ -330,22 +330,24 @@ export default function App() {
   const partnerOrigins = new Set(tools.map((t) => t.profile?.name).filter(Boolean)).size;
   const offlineNames = new Set([...unreachable, ...offline]);
 
-  const status = (
-    <ProtectionStatus
-      mediating={publishedCount > 0 || tools.length > 0}
-      origins={partnerOrigins}
-      capabilities={publishedCount || tools.length}
-      transport={!settled ? "Starting" : federatedNow ? "Native" : "Fallback"}
-      onOpenDiagnostics={() => go("webmcp")}
-    />
-  );
+  const statusProps = {
+    mediating: publishedCount > 0 || tools.length > 0,
+    origins: partnerOrigins,
+    capabilities: publishedCount || tools.length,
+    transport: (!settled ? "Starting" : federatedNow ? "Native" : "Fallback") as
+      | "Starting"
+      | "Native"
+      | "Fallback",
+    onOpenDiagnostics: () => go("webmcp"),
+  };
 
   return (
     <>
       <AppShell
         view={view}
         onNavigate={go}
-        status={status}
+        status={<ProtectionStatus {...statusProps} />}
+        statusCompact={<ProtectionStatus {...statusProps} compact />}
         frames={
           <PartnerFrames
             partners={PARTNERS}

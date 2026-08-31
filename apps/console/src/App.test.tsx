@@ -47,6 +47,15 @@ describe('the console', () => {
     expect(html).toContain('No calls mediated yet');
   });
 
+  it('offers the rail collapse, labelled for a keyboard user', () => {
+    const html = renderToStaticMarkup(<App />);
+
+    // The rail starts expanded when storage says nothing, and the control that
+    // narrows it is a real button with a name rather than a bare icon.
+    expect(html).toContain('Collapse the sidebar');
+    expect(html).toContain('WebMCP security');
+  });
+
   it('keeps the partner frames mounted while they are off-view', () => {
     const html = renderToStaticMarkup(<App />);
     // Overview is showing, so the frames are hidden — but present, because
