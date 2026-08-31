@@ -3,8 +3,10 @@ import {
   evaluate,
   recordTaint,
   type DiscoveredTool,
-  type ToolResolver,
+  type Reason,
+  type TaintMatch,
   type TaintSource,
+  type ToolResolver,
 } from '@airlock/shared';
 import { modelContext, type RegisterableTool } from './types';
 import type { Ledger } from '../state/ledger';
@@ -17,16 +19,59 @@ const proxyName = (tool: DiscoveredTool): string =>
  * Explains a refusal to the agent in terms it can act on.
  *
  * A blocked call is not a failure the agent should retry; it is a boundary it
- * should not have approached. Saying so plainly, and naming the origins
- * involved, is more useful than an opaque error and stops the agent burning
- * turns rephrasing the same request.
+ * should not have approached. The distinction has to survive being read by a
+ * model, so it is carried as fields rather than as a paragraph: whether the
+ * capability ran, whether either kind of retry is appropriate, whether an
+ * override is something this surface can grant, and what to call instead. Prose
+ * in an error string is something a model may summarise away; a `retry` object
+ * whose every value is `false` is not.
  */
-const refusal = (reasons: readonly { code: string; detail: string }[]): string =>
-  JSON.stringify({
-    error: 'Airlock refused this call.',
-    reasons: reasons.map((r) => r.detail),
-    hint: 'This was blocked by policy, not by a transient fault. Retrying the same call will be refused again, and there is no argument you can pass to bypass it. Tell the user what you were trying to do. If they still want it, they can release it themselves from the Airlock console, where the provenance is shown.',
-  }, null, 2);
+const refusal = ({
+  tool,
+  status,
+  reasons,
+  taint,
+}: {
+  tool: DiscoveredTool;
+  status: 'blocked_by_policy' | 'declined_by_user';
+  reasons: readonly Reason[];
+  taint: readonly TaintMatch[];
+}): string =>
+  JSON.stringify(
+    {
+      error: 'Airlock refused this call.',
+      status,
+      // Named so it is unmistakable that this was not the model's own
+      // reluctance. The policy engine refused; the model was not consulted.
+      enforcedBy: 'airlock-policy-engine',
+      capabilityInvoked: false,
+      tool: tool.name,
+      origin: tool.profile?.name ?? tool.raw.origin ?? 'unknown',
+      reasons: reasons.map((r) => ({ code: r.code, detail: r.detail })),
+      provenance: taint.map((m) => ({
+        origin: m.source.origin,
+        fromTool: m.source.toolName,
+        matchedText: m.fragment,
+      })),
+      retry: {
+        sameArguments: false,
+        modifiedArguments: false,
+        why: 'The decision is a function of the tool, the arguments and where their values came from. Rewording, re-encoding or splitting the arguments does not change it.',
+      },
+      humanOverride: {
+        requestableByAgent: false,
+        grantedIn: 'the Airlock console, by a person, with the provenance shown',
+        why: 'No tool on this surface requests, grants or disables policy. Report what you were trying to do and let the user decide.',
+      },
+      nextStep: {
+        tool: 'airlock_explain_decision',
+        arguments: { toolName: tool.name },
+        why: 'Returns the recorded decision, the origins each value came from, and whether the call may be retried.',
+      },
+    },
+    null,
+    2,
+  );
 
 export interface PublishReport {
   readonly registered: number;
@@ -194,17 +239,27 @@ export class Mediator {
 
     if (decision.disposition === 'block' && !override) {
       ledger.append({ toolName: tool.name, origin, args, decision, outcome: 'blocked' });
-      return refusal(decision.reasons);
+      return refusal({
+        tool,
+        status: 'blocked_by_policy',
+        reasons: decision.reasons,
+        taint: decision.taint,
+      });
     }
 
     if (decision.disposition === 'confirm' && !override) {
       const approved = await consent.ask(tool, args, decision);
       if (!approved) {
         ledger.append({ toolName: tool.name, origin, args, decision, outcome: 'declined' });
-        return refusal([{
-          code: 'user-declined',
-          detail: 'The user was shown this call and declined it.',
-        }]);
+        return refusal({
+          tool,
+          status: 'declined_by_user',
+          reasons: [{
+            code: 'user-declined',
+            detail: 'The user was shown this call, in Airlock\u2019s own description of it, and declined.',
+          }],
+          taint: decision.taint,
+        });
       }
     }
 
