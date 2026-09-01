@@ -1,5 +1,7 @@
 # Airlock
 
+[![CI](https://github.com/rahXephonz/airlock/actions/workflows/ci.yml/badge.svg)](https://github.com/rahXephonz/airlock/actions/workflows/ci.yml)
+
 **The capability firewall for the agentic web.**
 
 WebMCP lets agents operate websites. Airlock lets those websites belong to
@@ -214,7 +216,8 @@ reachable from a proxy leads there.
 
 Four defects were found in one session while building this. **Not one threw an
 exception describing its cause,** and the page looked healthy through all of them.
-Full detail in [`docs/FINDINGS.md`](docs/FINDINGS.md).
+Full detail in [`docs/FINDINGS.md`](docs/FINDINGS.md), which also tracks where each
+one has been reported upstream and the state of that report.
 
 | symptom                               | cause                                                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -243,6 +246,42 @@ The console reports which of these it got, in the rail and in the WebMCP view, o
 every load. Where cross-origin discovery is withheld the tool surface is a stand-in and
 says so — and the policy engine, provenance tracking, ledger, consent and
 override are the same code either way. Policy is independent of transport.
+
+---
+
+## What this does not solve
+
+Three holes are worth naming, because a reader will find them anyway.
+
+**Trust assignment has no provenance of its own.** Origin trust levels are
+configured in the console, by hand. Nothing verifies that an origin is what its
+level says it is, and in a real deployment nothing stops a hostile origin from
+presenting itself the way a trustworthy one does — the person doing the
+configuring has only the origin's own presentation to go on. Three directions
+are worth exploring: signed capability metadata, so an origin's claims carry
+something checkable; trust-on-first-use, so a later change in an origin's
+surface is at least visible; and organisation-level policy, so the decision is
+made once by someone equipped to make it rather than per-user at a dialog. This
+is the same bootstrapping problem certificate authorities exist to solve for
+TLS, and Airlock does not solve it.
+
+**Airlock is itself a fully trusted origin.** The console holds every mediated
+capability, the provenance record and the policy engine. Compromise it and there
+is no second gate. That moves the trust problem rather than removing it. The
+honest defence is narrow and should be read as narrow: the user chooses the
+console explicitly and once, and partner origins arrive behind it through
+federation — one deliberate trust decision instead of N implicit ones spread
+across a session. That is a defence, not a solution. Nothing here makes the
+console safe to trust; it makes the set of things you must trust smaller and
+nameable.
+
+**Taint matching is textual.** It catches text carried from one origin into a
+call on another, and it does not catch paraphrase: a value the model restates in
+its own words breaks the match. A missed match downgrades a block to the
+confirmation prompt every write already gets — it does not open a silent path —
+but the user then sees a generic write warning instead of the trust-boundary
+explanation. Discussed in full under [Why a confirmation dialog is not the same
+thing](#why-a-confirmation-dialog-is-not-the-same-thing).
 
 ---
 

@@ -90,8 +90,10 @@ commit.
 
 ## 3. WebMCP design rules
 
-This is the criterion we win on. "Leverage" means the tool surface is _designed_,
-not merely _exposed_. Four well-gated tools beat ten static CRUD tools.
+The tool surface has to be _designed_, not merely _exposed_. Four well-gated tools
+beat ten static CRUD tools, because the whole argument is that policy is
+expressible over the surface at all — and a surface nobody shaped has nothing to
+express policy over.
 
 **Required:**
 
@@ -103,9 +105,9 @@ not merely _exposed_. Four well-gated tools beat ten static CRUD tools.
   must actually cancel.
 - **Annotations on every tool.** `readOnlyHint` to separate safe from mutating,
   `untrustedContentHint: true` on anything returning attacker-influenceable text.
-- **Use the declarative API** on at least one real form where it fits. Using both
-  APIs where each is appropriate is a leverage signal; forcing everything through
-  one is not.
+- **Use the declarative API** on at least one real form where it fits. The two
+  APIs suit different cases; forcing everything through one produces a worse
+  surface than using each where it belongs.
 - **Structured, instructive errors.** A failed call should teach the agent how to
   fix it, not just fail.
 - **Schemas designed for a model.** Enums over free strings, `oneOf` with titles,
@@ -121,10 +123,11 @@ Never let policy decisions rest on a cross-origin annotation. Surface it to the
 user as _"this origin claims read-only"_ and decide based on origin trust level
 and observed behaviour. Getting this right is worth more than any feature.
 
-**Free win — parameter overreach detection.** At discovery time you already have
-every tool's `inputSchema`. Flag tools requesting fields disproportionate to their
-stated purpose (a flight lookup asking for home address). ~40 lines, genuinely
-novel.
+**Cheap, and worth doing — parameter overreach detection.** At discovery time you
+already have every tool's `inputSchema`. Flag tools requesting fields
+disproportionate to their stated purpose (a flight lookup asking for home
+address). ~40 lines, and it catches a foreign origin quietly widening what it
+collects without changing anything a user would notice.
 
 ---
 
@@ -139,7 +142,7 @@ single most likely way this project dies.
 console shows it as unavailable. It does not throw, blank, or hang. See §5 for why
 this is not optional.
 
-**Do not require a wallet, login, or any extension** to see the core demo. A judge
+**Do not require a wallet, login, or any extension** to see the core demo. Anyone
 opening the live URL with nothing installed must reach the working product. Any
 auth is an optional path, and credentials go in the submission form.
 
@@ -157,31 +160,32 @@ That is ~20 days of frozen live infrastructure across four deployments.
   Do not spread them across Vercel + Netlify + Render just to use three credit
   grants.
 - Verify nothing sleeps, expires, or rate-limits on a free tier over three weeks.
-- No external API dependency that can rate-limit you into a blank page while a
-  judge is looking.
+- No external API dependency that can rate-limit you into a blank page while
+  someone has the live site open.
 - Tag the submitted commit. Fork to keep building.
 
 ---
 
 ## 6. Deliverables
 
-Judges may score on description and repo **alone**, and will also visit the live
-URL. The video is required but is one input among several. Budget accordingly.
+Most people who evaluate this will have the repo and the description and nothing
+else; some will open the live URL. The video is required, but the argument cannot
+live only there. Budget accordingly.
 
 - [ ] Public repo, **OSS license file detectable in the GitHub About section**
 - [ ] Working live URL, no setup required
 - [ ] README with an **architecture diagram showing the four origins and the trust
-      boundary** — a judge reading code alone must understand the federation
+      boundary** — someone reading the code alone must understand the federation
       without watching anything
 - [ ] Devpost description covering: why WebMCP fits, how it improves UX, what
       people + agents can now do that was hard before, how WebMCP was implemented
 - [ ] Public YouTube demo, **under 3 minutes**, with audio, no copyrighted music
 - [ ] Clear testing instructions (which browser, which flag)
 
-### The novelty objection — answer it in paragraph one
+### The obvious objection — answer it in paragraph one
 
-A judge will ask: _ChatGPT already requires manual confirmation before write
-actions. What does this add?_
+The first question anyone asks is: _ChatGPT already requires manual confirmation
+before write actions. What does this add?_
 
 The answer: ChatGPT's confirmation is per-call, binary, and **provenance-blind**.
 It asks "run this write?" without telling you which origin the tool came from,

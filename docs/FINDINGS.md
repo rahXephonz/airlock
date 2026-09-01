@@ -4,6 +4,20 @@ Measured 2026-08-28 against deployed HTTPS origins. Everything below is
 observed behaviour, not documentation. Where docs and observation disagreed,
 observation is recorded.
 
+## Reported upstream
+
+Every defect below is recorded in this file with the measurement that found it.
+Filing is tracked here so the report and the evidence stay in one place.
+
+| finding | filed at | status |
+| --- | --- | --- |
+| `getTools({ fromOrigins })` never settles — no rejection, no timeout | TBD | not yet filed |
+| `getTools({ fromOrigins })` unions the page's own tools with foreign ones rather than filtering to the named origins | TBD | not yet filed |
+| A foreign `inputSchema` arrives as a JSON string, not an object; `Object.keys` on it returns character indices | TBD | not yet filed |
+| A declaratively registered tool is invisible to a cross-origin `getTools({ fromOrigins })`, with no signal that one was withheld | TBD | not yet filed |
+| A replaced mediator leaves its proxies registered, so its successor collides with itself as `Duplicate tool name` | TBD | not yet filed |
+| `registerTool` fires `toolchange`, so a publish triggered by that event collides with the names it just claimed | TBD | not yet filed |
+
 ## Browser support
 
 | capability | Chrome 149+ (flag) | ChatGPT in-app browser |
