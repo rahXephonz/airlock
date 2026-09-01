@@ -33,8 +33,8 @@ nothing in the picture shows the write landing.
 
 ## 1. Architecture and the trust boundary
 
-The one a judge should see first. Origins, who publishes what, and the single
-place a call can be refused.
+The one to read first. Origins, who publishes what, and the single place a call
+can be refused.
 
 ```mermaid
 flowchart LR

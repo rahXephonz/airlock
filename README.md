@@ -214,10 +214,26 @@ reachable from a proxy leads there.
 
 ## What we learned about WebMCP
 
-Four defects were found in one session while building this. **Not one threw an
-exception describing its cause,** and the page looked healthy through all of them.
-Full detail in [`docs/FINDINGS.md`](docs/FINDINGS.md), which also tracks where each
-one has been reported upstream and the state of that report.
+Six findings came out of one session while building this: two questions about
+what the spec means, and four failures that never named themselves. All of them
+measured against deployed HTTPS origins rather than localhost, in Chrome 149+
+with `chrome://flags/#enable-webmcp-testing`, in ChatGPT's in-app browser, and in
+Brave 151, which supports more of WebMCP than either browser tested during the
+spike — every cross-origin finding comes from Brave. Full detail in
+[`docs/FINDINGS.md`](docs/FINDINGS.md), which also tracks where each one has been
+reported upstream and the state of that report.
+
+**Two are questions about the spec, not bugs in a build.** Both concern what
+`getTools({ fromOrigins })` is supposed to return, and both are invisible to the
+caller:
+
+| question                                                          | what is observed                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Does `fromOrigins` filter, or union?                              | It **unions** foreign tools with the page's own rather than filtering to the named origins. Provenance has to come from each tool's own `origin` |
+| Does a declaratively registered tool cross an origin boundary?    | It does not. The browser's own registry confirms the tool, and cross-origin discovery omits it — the call succeeds and returns the rest |
+
+**Four are silent failures.** **Not one threw an exception describing its
+cause,** and the page looked healthy through all of them:
 
 | symptom                               | cause                                                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |

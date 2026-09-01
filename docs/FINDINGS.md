@@ -78,10 +78,10 @@ So the protection is a confirmation dialog whose question was effectively
 written by the attacker, shown to a user who is buying a lamp and expects
 checkout friction.
 
-## What this does to the pitch
+## Correcting an earlier claim
 
 An earlier framing said the built-in confirmation is provenance-blind. That is
-wrong as written and a judge running the same test would find out. On a write
+wrong as written and anyone running the same test would find out. On a write
 the agent stated the tool's origin and claimed where the argument came from:
 
 > The tool came from that origin, and `hello` came from your Turn 3
@@ -106,8 +106,8 @@ judgement — which holds whether or not the next model resists injection better
 
 Measured 2026-08-29 against the deployed console, opened from a link inside
 ChatGPT and driven by the agent in that browser rather than by a person. This is
-the run that matters: it is the path a judge is most likely to take, and it is
-the one where the federation surface is missing.
+the run that matters: it is the path a first-time visitor is most likely to
+take, and it is the one where the federation surface is missing.
 
 The agent enumerated eight tools, all of them Airlock proxies, and no partner
 tool by its own name. So `registerTool` works in a browser where

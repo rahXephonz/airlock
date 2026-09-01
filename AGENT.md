@@ -172,16 +172,6 @@ Most people who evaluate this will have the repo and the description and nothing
 else; some will open the live URL. The video is required, but the argument cannot
 live only there. Budget accordingly.
 
-- [ ] Public repo, **OSS license file detectable in the GitHub About section**
-- [ ] Working live URL, no setup required
-- [ ] README with an **architecture diagram showing the four origins and the trust
-      boundary** — someone reading the code alone must understand the federation
-      without watching anything
-- [ ] Devpost description covering: why WebMCP fits, how it improves UX, what
-      people + agents can now do that was hard before, how WebMCP was implemented
-- [ ] Public YouTube demo, **under 3 minutes**, with audio, no copyrighted music
-- [ ] Clear testing instructions (which browser, which flag)
-
 ### The obvious objection — answer it in paragraph one
 
 The first question anyone asks is: _ChatGPT already requires manual confirmation
@@ -192,13 +182,6 @@ It asks "run this write?" without telling you which origin the tool came from,
 what its trust level is, or that the argument values originated in text supplied
 by a different, untrusted origin. Airlock adds provenance and policy across a
 trust boundary. Lead with this; do not bury it.
-
-### Video arc (one continuous narrative, no feature tour)
-
-Task needs tools from three origins → console discovers them → shows trust
-classification → `bazaar` attempts injection through tool output → policy blocks
-the escalation and shows why → user confirms the legitimate action → audit log
-replays it.
 
 ---
 
